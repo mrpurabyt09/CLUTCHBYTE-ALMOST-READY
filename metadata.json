@@ -1,0 +1,5 @@
+{
+  "name": "Universal AI Chat",
+  "description": "A Gemini-style chat interface supporting OpenRouter, Gemini Pro, Vision, Image Gen, TTS, and Live Audio.",
+  "requestFramePermissions": ["camera", "microphone", "geolocation"]
+}
