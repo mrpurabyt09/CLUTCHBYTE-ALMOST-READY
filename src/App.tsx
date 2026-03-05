@@ -343,29 +343,31 @@ export default function App() {
         </div>
       ) : (
         <>
-          <Sidebar 
-            chats={chats} 
-            currentChatId={currentChatId} 
-            onSelectChat={(id) => { 
-              setCurrentChatId(id); 
-              setActiveView('chats');
-              setIsSidebarOpen(false); 
-            }}
-            onNewChat={() => {
-              handleNewChat();
-              setActiveView('chats');
-            }}
-            onDeleteChat={handleDeleteChat}
-            onRenameChat={handleRenameChat}
-            isOpen={isSidebarOpen}
-            onClose={() => setIsSidebarOpen(false)}
-            onOpenSettings={() => setActiveView('settings')}
-            onOpenAdmin={() => setActiveView('admin')}
-            onOpenModels={() => setActiveView('models')}
-            onOpenApiKeys={() => setActiveView('api-keys')}
-            onLogout={handleLogout}
-            activeView={activeView}
-          />
+          {activeView !== 'admin' && (
+            <Sidebar 
+              chats={chats} 
+              currentChatId={currentChatId} 
+              onSelectChat={(id) => { 
+                setCurrentChatId(id); 
+                setActiveView('chats');
+                setIsSidebarOpen(false); 
+              }}
+              onNewChat={() => {
+                handleNewChat();
+                setActiveView('chats');
+              }}
+              onDeleteChat={handleDeleteChat}
+              onRenameChat={handleRenameChat}
+              isOpen={isSidebarOpen}
+              onClose={() => setIsSidebarOpen(false)}
+              onOpenSettings={() => setActiveView('settings')}
+              onOpenAdmin={() => setActiveView('admin')}
+              onOpenModels={() => setActiveView('models')}
+              onOpenApiKeys={() => setActiveView('api-keys')}
+              onLogout={handleLogout}
+              activeView={activeView}
+            />
+          )}
           
           <div className="flex-1 flex flex-col min-w-0 h-full relative">
             {activeView === 'chats' && (
@@ -398,6 +400,7 @@ export default function App() {
               <AdminDashboard 
                 chats={chats} 
                 settings={settings}
+                onUpdateSettings={setSettings}
                 onClearAll={() => {
                   handleClearAllChats();
                   setActiveView('chats');

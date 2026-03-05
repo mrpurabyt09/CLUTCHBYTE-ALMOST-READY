@@ -1,21 +1,42 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Chat, Settings } from '../types';
 import { X } from 'lucide-react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer
 } from 'recharts';
+import { SystemStatus } from './admin/SystemStatus';
+import { BroadcastCenter } from './admin/BroadcastCenter';
+import { DataExport } from './admin/DataExport';
+import { ModelRouting } from './admin/ModelRouting';
+import { ModelPlayground } from './admin/ModelPlayground';
+import { UserManagement } from './admin/UserManagement';
+import { ModelForm } from './admin/ModelForm';
+import { ModelDetails } from './admin/ModelDetails';
+import { UserActivityDetails } from './admin/UserActivityDetails';
+import { FeedbackReports } from './admin/FeedbackReports';
+import { SystemLogs } from './admin/SystemLogs';
+import { WebhookConfig } from './admin/WebhookConfig';
 
 interface AdminDashboardProps {
   chats: Chat[];
   settings: Settings;
   onClearAll: () => void;
   onClose: () => void;
+  onUpdateSettings: (settings: Settings) => void;
 }
 
-export function AdminDashboard({ chats, settings, onClearAll, onClose }: AdminDashboardProps) {
+export function AdminDashboard({ chats, settings, onClearAll, onClose, onUpdateSettings }: AdminDashboardProps) {
   const [activeSection, setActiveSection] = useState('dashboard');
   const [userSearchTerm, setUserSearchTerm] = useState('');
+  const [detailView, setDetailView] = useState<{ type: string; id?: string } | null>(null);
+
+  const toggleTheme = () => {
+    onUpdateSettings({
+      ...settings,
+      isDarkMode: !settings.isDarkMode
+    });
+  };
 
   const stats = useMemo(() => {
     let totalMessages = 0;
@@ -87,7 +108,7 @@ export function AdminDashboard({ chats, settings, onClearAll, onClose }: AdminDa
       className="flex-1 bg-[#f6f6f8] dark:bg-[#101622] text-slate-900 dark:text-slate-100 font-sans antialiased overflow-hidden flex flex-row h-full"
     >
       {/* Sidebar Navigation */}
-      <aside className="w-64 flex-shrink-0 border-r border-[#2a3649] bg-[#111722] hidden md:flex flex-col justify-between h-full relative z-50">
+      <aside className="w-64 flex-shrink-0 border-r border-slate-200 dark:border-[#2a3649] bg-white dark:bg-[#111722] hidden md:flex flex-col justify-between h-full relative z-50 transition-colors duration-200">
         <div className="flex flex-col gap-6 p-4">
           {/* Brand */}
           <div className="flex items-center gap-3 px-2">
@@ -95,65 +116,153 @@ export function AdminDashboard({ chats, settings, onClearAll, onClose }: AdminDa
               <span className="material-symbols-outlined">smart_toy</span>
             </div>
             <div className="flex flex-col">
-              <h1 className="text-white text-base font-bold leading-none">ClutchByte</h1>
-              <p className="text-slate-400 text-xs font-medium mt-1">Admin Console</p>
+              <h1 className="text-slate-900 dark:text-white text-base font-bold leading-none">ClutchByte</h1>
+              <p className="text-slate-500 dark:text-slate-400 text-xs font-medium mt-1">Admin Console</p>
             </div>
           </div>
           {/* Navigation Links */}
           <nav className="flex flex-col gap-1">
             <button 
-              onClick={() => setActiveSection('dashboard')}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors w-full text-left ${activeSection === 'dashboard' ? 'bg-[#135bec] text-white' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
+              onClick={() => { setActiveSection('dashboard'); setDetailView(null); }}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors w-full text-left ${activeSection === 'dashboard' ? 'bg-[#135bec] text-white' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5'}`}
             >
               <span className="material-symbols-outlined text-[20px]">dashboard</span>
               <span className="text-sm font-medium">Dashboard</span>
             </button>
             <button 
-              onClick={() => setActiveSection('usage')}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors w-full text-left ${activeSection === 'usage' ? 'bg-[#135bec] text-white' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
+              onClick={() => { setActiveSection('system-status'); setDetailView(null); }}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors w-full text-left ${activeSection === 'system-status' ? 'bg-[#135bec] text-white' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5'}`}
+            >
+              <span className="material-symbols-outlined text-[20px]">monitor_heart</span>
+              <span className="text-sm font-medium">System Status</span>
+            </button>
+            <button 
+              onClick={() => { setActiveSection('historical-uptime'); setDetailView(null); }}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors w-full text-left ${activeSection === 'historical-uptime' ? 'bg-[#135bec] text-white' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5'}`}
+            >
+              <span className="material-symbols-outlined text-[20px]">history</span>
+              <span className="text-sm font-medium">Historical Uptime</span>
+            </button>
+            <button 
+              onClick={() => { setActiveSection('maintenance'); setDetailView(null); }}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors w-full text-left ${activeSection === 'maintenance' ? 'bg-[#135bec] text-white' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5'}`}
+            >
+              <span className="material-symbols-outlined text-[20px]">schedule</span>
+              <span className="text-sm font-medium">Maintenance</span>
+            </button>
+            <button 
+              onClick={() => { setActiveSection('api-docs'); setDetailView(null); }}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors w-full text-left ${activeSection === 'api-docs' ? 'bg-[#135bec] text-white' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5'}`}
+            >
+              <span className="material-symbols-outlined text-[20px]">description</span>
+              <span className="text-sm font-medium">API Docs</span>
+            </button>
+            <button 
+              onClick={() => { setActiveSection('webhooks'); setDetailView(null); }}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors w-full text-left ${activeSection === 'webhooks' ? 'bg-[#135bec] text-white' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5'}`}
+            >
+              <span className="material-symbols-outlined text-[20px]">webhook</span>
+              <span className="text-sm font-medium">Webhooks</span>
+            </button>
+            <button 
+              onClick={() => { setActiveSection('usage'); setDetailView(null); }}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors w-full text-left ${activeSection === 'usage' ? 'bg-[#135bec] text-white' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5'}`}
             >
               <span className="material-symbols-outlined text-[20px]">bar_chart</span>
               <span className="text-sm font-medium">Usage & Quotas</span>
             </button>
             <button 
-              onClick={() => setActiveSection('models')}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors w-full text-left ${activeSection === 'models' ? 'bg-[#135bec] text-white' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
+              onClick={() => { setActiveSection('models'); setDetailView(null); }}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors w-full text-left ${activeSection === 'models' ? 'bg-[#135bec] text-white' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5'}`}
             >
               <span className="material-symbols-outlined text-[20px]">model_training</span>
               <span className="text-sm font-medium">Models</span>
             </button>
             <button 
-              onClick={() => setActiveSection('users')}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors w-full text-left ${activeSection === 'users' ? 'bg-[#135bec] text-white' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
+              onClick={() => { setActiveSection('model-routing'); setDetailView(null); }}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors w-full text-left ${activeSection === 'model-routing' ? 'bg-[#135bec] text-white' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5'}`}
+            >
+              <span className="material-symbols-outlined text-[20px]">route</span>
+              <span className="text-sm font-medium">Routing & Fallback</span>
+            </button>
+            <button 
+              onClick={() => { setActiveSection('playground'); setDetailView(null); }}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors w-full text-left ${activeSection === 'playground' ? 'bg-[#135bec] text-white' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5'}`}
+            >
+              <span className="material-symbols-outlined text-[20px]">play_circle</span>
+              <span className="text-sm font-medium">Playground</span>
+            </button>
+            <button 
+              onClick={() => { setActiveSection('users'); setDetailView(null); }}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors w-full text-left ${activeSection === 'users' ? 'bg-[#135bec] text-white' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5'}`}
             >
               <span className="material-symbols-outlined text-[20px]">group</span>
               <span className="text-sm font-medium">Users</span>
             </button>
             <button 
-              onClick={() => setActiveSection('settings')}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors w-full text-left ${activeSection === 'settings' ? 'bg-[#135bec] text-white' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
+              onClick={() => { setActiveSection('broadcast'); setDetailView(null); }}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors w-full text-left ${activeSection === 'broadcast' ? 'bg-[#135bec] text-white' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5'}`}
+            >
+              <span className="material-symbols-outlined text-[20px]">campaign</span>
+              <span className="text-sm font-medium">Broadcast Center</span>
+            </button>
+            <button 
+              onClick={() => { setActiveSection('feedback'); setDetailView(null); }}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors w-full text-left ${activeSection === 'feedback' ? 'bg-[#135bec] text-white' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5'}`}
+            >
+              <span className="material-symbols-outlined text-[20px]">feedback</span>
+              <span className="text-sm font-medium">Feedback & Reports</span>
+            </button>
+            <button 
+              onClick={() => { setActiveSection('data-export'); setDetailView(null); }}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors w-full text-left ${activeSection === 'data-export' ? 'bg-[#135bec] text-white' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5'}`}
+            >
+              <span className="material-symbols-outlined text-[20px]">download</span>
+              <span className="text-sm font-medium">Data Export</span>
+            </button>
+            <button 
+              onClick={() => { setActiveSection('settings'); setDetailView(null); }}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors w-full text-left ${activeSection === 'settings' ? 'bg-[#135bec] text-white' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5'}`}
             >
               <span className="material-symbols-outlined text-[20px]">settings</span>
               <span className="text-sm font-medium">Settings</span>
             </button>
             <button 
-              onClick={() => setActiveSection('logs')}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors w-full text-left ${activeSection === 'logs' ? 'bg-[#135bec] text-white' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
+              onClick={() => { setActiveSection('logs'); setDetailView(null); }}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors w-full text-left ${activeSection === 'logs' ? 'bg-[#135bec] text-white' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5'}`}
             >
               <span className="material-symbols-outlined text-[20px]">description</span>
               <span className="text-sm font-medium">Logs</span>
             </button>
           </nav>
+
+          {/* Theme Toggle */}
+          <div className="mt-auto pt-4 border-t border-slate-200 dark:border-[#2a3649]/50">
+            <button 
+              onClick={toggleTheme}
+              className="flex items-center justify-between w-full px-3 py-2.5 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5 transition-all group"
+            >
+              <div className="flex items-center gap-3">
+                <span className="material-symbols-outlined text-[20px]">
+                  {settings.isDarkMode ? 'dark_mode' : 'light_mode'}
+                </span>
+                <span className="text-sm font-medium">{settings.isDarkMode ? 'Dark Mode' : 'Light Mode'}</span>
+              </div>
+              <div className={`w-10 h-5 rounded-full relative transition-colors duration-200 ${settings.isDarkMode ? 'bg-[#135bec]' : 'bg-slate-300 dark:bg-slate-700'}`}>
+                <div className={`absolute top-1 w-3 h-3 rounded-full bg-white shadow-sm transition-transform duration-200 ${settings.isDarkMode ? 'translate-x-6' : 'translate-x-1'}`} />
+              </div>
+            </button>
+          </div>
         </div>
         {/* User Profile Bottom */}
-        <div className="p-4 border-t border-[#2a3649]">
-          <div className="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-white/5 cursor-pointer transition-colors">
-            <div className="h-8 w-8 rounded-full bg-slate-700 bg-cover bg-center" style={{backgroundImage: "url('https://lh3.googleusercontent.com/aida-public/AB6AXuDxg5x79vyLMTmMmqrxlCsyfNCKLWo-W6sHxIGdlPcUDybu3cLzjT4BRQGY71fbtpiDjXs_DJUppZrFcUgWPaNJZ1ds0EB9hpdzMU0HaT5jBJurNK3x7selAjZ6Eo55fyRL9jmFK3694ZEnwpk_xRrt0ntl4EU5YvaoVxE0WQ4z77s2vx366t_87E7Wh-S4YblQYlONGogPWt-7Yc9S3wXhA7UvmoyBXS6GWEh9bOcmK4H2ygUGlTkM-C05rObBgKS8a2bXYY0HB5I')"}}></div>
+        <div className="p-4 border-t border-slate-200 dark:border-[#2a3649]">
+          <div className="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-white/5 cursor-pointer transition-colors">
+            <div className="h-8 w-8 rounded-full bg-slate-200 dark:bg-slate-700 bg-cover bg-center" style={{backgroundImage: "url('https://lh3.googleusercontent.com/aida-public/AB6AXuDxg5x79vyLMTmMmqrxlCsyfNCKLWo-W6sHxIGdlPcUDybu3cLzjT4BRQGY71fbtpiDjXs_DJUppZrFcUgWPaNJZ1ds0EB9hpdzMU0HaT5jBJurNK3x7selAjZ6Eo55fyRL9jmFK3694ZEnwpk_xRrt0ntl4EU5YvaoVxE0WQ4z77s2vx366t_87E7Wh-S4YblQYlONGogPWt-7Yc9S3wXhA7UvmoyBXS6GWEh9bOcmK4H2ygUGlTkM-C05rObBgKS8a2bXYY0HB5I')"}}></div>
             <div className="flex flex-col flex-1 min-w-0">
-              <p className="text-sm font-medium text-white truncate">Alex Morgan</p>
-              <p className="text-xs text-slate-400 truncate">Super Admin</p>
+              <p className="text-sm font-medium text-slate-900 dark:text-white truncate">Alex Morgan</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 truncate">Super Admin</p>
             </div>
-            <span className="material-symbols-outlined text-slate-400 text-[18px]">more_vert</span>
+            <span className="material-symbols-outlined text-slate-500 dark:text-slate-400 text-[18px]">more_vert</span>
           </div>
         </div>
       </aside>
@@ -161,25 +270,45 @@ export function AdminDashboard({ chats, settings, onClearAll, onClose }: AdminDa
       {/* Main Content Area */}
       <main className="flex-1 flex flex-col min-h-full bg-[#f6f6f8] dark:bg-[#101622] overflow-y-auto overflow-x-hidden">
         {/* Top Header */}
-        <header className="flex items-center justify-between px-6 py-5 border-b border-[#2a3649]/50 bg-[#f6f6f8]/50 dark:bg-[#101622]/50 backdrop-blur-sm sticky top-0 z-40">
+        <header className="flex items-center justify-between px-6 py-5 border-b border-slate-200 dark:border-[#2a3649]/50 bg-white/50 dark:bg-[#101622]/50 backdrop-blur-sm sticky top-0 z-40 transition-colors duration-200">
           <div className="flex items-center gap-4">
-            <button className="md:hidden text-slate-400 hover:text-white">
+            <button className="md:hidden text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white">
               <span className="material-symbols-outlined">menu</span>
             </button>
             <div>
               <h2 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
                 {activeSection === 'dashboard' && 'Dashboard Overview'}
+                {activeSection === 'system-status' && 'System Status'}
+                {activeSection === 'historical-uptime' && 'Historical Uptime'}
+                {activeSection === 'maintenance' && 'Maintenance Schedule'}
+                {activeSection === 'api-docs' && 'API Documentation'}
                 {activeSection === 'usage' && 'Usage & Quotas'}
                 {activeSection === 'models' && 'Models Management'}
+                {activeSection === 'model-routing' && 'Routing & Fallback'}
+                {activeSection === 'playground' && 'AI Playground'}
                 {activeSection === 'users' && 'Users Management'}
+                {activeSection === 'broadcast' && 'Broadcast Center'}
+                {activeSection === 'data-export' && 'Data Export'}
                 {activeSection === 'settings' && 'System Settings'}
                 {activeSection === 'logs' && 'System Logs'}
+                {activeSection === 'feedback' && 'Feedback & Reports'}
+                {activeSection === 'webhooks' && 'Webhooks'}
               </h2>
               <p className="text-sm text-slate-500 dark:text-slate-400">
                 {activeSection === 'dashboard' && 'Real-time system metrics and performance tracking'}
+                {activeSection === 'system-status' && 'Monitor core infrastructure health and uptime'}
+                {activeSection === 'historical-uptime' && 'Review long-term service availability and incident history'}
+                {activeSection === 'maintenance' && 'View and manage upcoming system maintenance windows'}
+                {activeSection === 'api-docs' && 'Technical documentation for ClutchByte API integration'}
+                {activeSection === 'webhooks' && 'Configure endpoints to receive real-time events from ClutchByte'}
                 {activeSection === 'usage' && 'Enterprise usage monitoring and quota management'}
                 {activeSection === 'models' && 'Manage and configure AI models'}
+                {activeSection === 'model-routing' && 'Configure smart routing and fallback logic'}
+                {activeSection === 'playground' && 'Test and experiment with different AI models'}
                 {activeSection === 'users' && 'Manage user accounts and permissions'}
+                {activeSection === 'broadcast' && 'Send system-wide announcements'}
+                {activeSection === 'feedback' && 'Review and manage user feedback and bug reports'}
+                {activeSection === 'data-export' && 'Export system data for analysis'}
                 {activeSection === 'settings' && 'Configure global system settings'}
                 {activeSection === 'logs' && 'View system activity and error logs'}
               </p>
@@ -197,8 +326,49 @@ export function AdminDashboard({ chats, settings, onClearAll, onClose }: AdminDa
         </header>
 
         {/* Dashboard Content */}
-        <div className="p-6 flex flex-col gap-6 max-w-[1600px] mx-auto w-full">
-          {activeSection === 'dashboard' && (
+        <div className="p-6 flex flex-col gap-6 max-w-[1600px] mx-auto w-full flex-1">
+          {detailView ? (
+            <div className="flex-1 flex flex-col">
+              {detailView.type === 'edit-model' && (
+                <ModelForm 
+                  mode="edit" 
+                  initialData={{ name: 'GPT-4 Vision', slug: 'gpt-4-vision-preview', provider: 'openai' }} 
+                  onBack={() => setDetailView(null)} 
+                />
+              )}
+              {detailView.type === 'add-model' && (
+                <ModelForm 
+                  mode="add" 
+                  onBack={() => setDetailView(null)} 
+                />
+              )}
+              {detailView.type === 'model-details' && <ModelDetails modelId={detailView.id || 'gpt-4'} onBack={() => setDetailView(null)} />}
+              {detailView.type === 'user-details' && <UserActivityDetails onBack={() => setDetailView(null)} />}
+            </div>
+          ) : (
+            <>
+              {activeSection === 'system-status' && <SystemStatus onNavigate={(section) => setActiveSection(section)} />}
+              {(activeSection === 'historical-uptime' || activeSection === 'maintenance' || activeSection === 'api-docs') && (
+                <div className="flex-1 flex items-center justify-center p-8">
+                  <div className="text-center space-y-4">
+                    <div className="w-16 h-16 bg-slate-100 dark:bg-white/5 rounded-full flex items-center justify-center mx-auto">
+                      <span className="material-symbols-outlined text-3xl text-slate-400">construction</span>
+                    </div>
+                    <h3 className="text-xl font-bold text-slate-900 dark:text-white">Section Under Construction</h3>
+                    <p className="text-slate-500 dark:text-slate-400 max-w-xs mx-auto">
+                      We're working hard to bring you the {activeSection.replace('-', ' ')} details. Check back soon!
+                    </p>
+                  </div>
+                </div>
+              )}
+              {activeSection === 'broadcast' && <BroadcastCenter />}
+              {activeSection === 'feedback' && <FeedbackReports onBack={() => setActiveSection('dashboard')} />}
+              {activeSection === 'webhooks' && <WebhookConfig onBack={() => setActiveSection('dashboard')} />}
+              {activeSection === 'data-export' && <DataExport />}
+              {activeSection === 'model-routing' && <ModelRouting />}
+              {activeSection === 'playground' && <ModelPlayground />}
+
+              {activeSection === 'dashboard' && (
             <div className="flex flex-col gap-8">
               {/* Page Header Info */}
               <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
@@ -645,10 +815,13 @@ export function AdminDashboard({ chats, settings, onClearAll, onClose }: AdminDa
                         className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-sm rounded-lg border-none focus:ring-1 focus:ring-[#135bec] py-2 pl-10 pr-3 w-64"
                       />
                     </div>
-                    <button className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-white bg-[#135bec] hover:bg-[#135bec]/90 rounded-lg transition-colors whitespace-nowrap">
-                      <span className="material-symbols-outlined text-[18px]">add</span>
-                      <span>New Model</span>
-                    </button>
+                  <button 
+                    onClick={() => setDetailView({ type: 'add-model' })}
+                    className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-white bg-[#135bec] hover:bg-[#135bec]/90 rounded-lg transition-colors whitespace-nowrap"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">add</span>
+                    <span>New Model</span>
+                  </button>
                   </div>
                 </div>
                 <div className="overflow-x-auto">
@@ -689,7 +862,16 @@ export function AdminDashboard({ chats, settings, onClearAll, onClose }: AdminDa
                           <td className="px-6 py-4 text-sm text-slate-500 dark:text-slate-400">{model.usage}</td>
                           <td className="px-6 py-4">
                             <div className="flex items-center gap-2">
-                              <button className="p-1.5 text-slate-400 hover:text-[#135bec] hover:bg-[#135bec]/10 rounded transition-colors">
+                              <button 
+                                onClick={() => setDetailView({ type: 'model-details', id: model.name })}
+                                className="p-1.5 text-slate-400 hover:text-[#135bec] hover:bg-[#135bec]/10 rounded transition-colors"
+                              >
+                                <span className="material-symbols-outlined text-[18px]">visibility</span>
+                              </button>
+                              <button 
+                                onClick={() => setDetailView({ type: 'edit-model', id: model.name })}
+                                className="p-1.5 text-slate-400 hover:text-[#135bec] hover:bg-[#135bec]/10 rounded transition-colors"
+                              >
                                 <span className="material-symbols-outlined text-[18px]">settings</span>
                               </button>
                               <button className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-500/10 rounded transition-colors">
@@ -706,107 +888,7 @@ export function AdminDashboard({ chats, settings, onClearAll, onClose }: AdminDa
             </div>
           )}
 
-          {activeSection === 'users' && (
-            <div className="flex flex-col gap-6">
-              {/* Users KPI Row */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="bg-white dark:bg-[#1a2332] rounded-xl p-5 border border-slate-200 dark:border-[#2a3649] shadow-sm">
-                  <h3 className="text-slate-500 dark:text-slate-400 text-sm font-medium">Total Users</h3>
-                  <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">1,284</p>
-                </div>
-                <div className="bg-white dark:bg-[#1a2332] rounded-xl p-5 border border-slate-200 dark:border-[#2a3649] shadow-sm">
-                  <h3 className="text-slate-500 dark:text-slate-400 text-sm font-medium">New Users (7d)</h3>
-                  <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">+156</p>
-                </div>
-                <div className="bg-white dark:bg-[#1a2332] rounded-xl p-5 border border-slate-200 dark:border-[#2a3649] shadow-sm">
-                  <h3 className="text-slate-500 dark:text-slate-400 text-sm font-medium">Active Now</h3>
-                  <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">42</p>
-                </div>
-              </div>
-
-              {/* Users Table */}
-              <div className="bg-white dark:bg-[#1a2332] rounded-xl border border-slate-200 dark:border-[#2a3649] shadow-sm overflow-hidden">
-                <div className="p-6 border-b border-slate-200 dark:border-[#2a3649] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                  <h3 className="text-lg font-bold text-slate-900 dark:text-white">User Directory</h3>
-                  <div className="flex flex-1 items-center gap-3 w-full sm:w-auto">
-                    <div className="relative flex-1 sm:w-64">
-                      <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-[18px]">search</span>
-                      <input 
-                        type="text" 
-                        placeholder="Search by name or email..." 
-                        value={userSearchTerm}
-                        onChange={(e) => setUserSearchTerm(e.target.value)}
-                        className="w-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-sm rounded-lg border-none focus:ring-1 focus:ring-[#135bec] py-2 pl-10 pr-3"
-                      />
-                    </div>
-                    <button className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-white bg-[#135bec] hover:bg-[#135bec]/90 rounded-lg transition-colors whitespace-nowrap">
-                      <span className="material-symbols-outlined text-[18px]">person_add</span>
-                      <span className="hidden sm:inline">Add User</span>
-                    </button>
-                  </div>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse">
-                    <thead>
-                      <tr className="bg-slate-50 dark:bg-slate-800/50">
-                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">User</th>
-                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Role</th>
-                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Status</th>
-                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Last Activity</th>
-                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-200 dark:divide-[#2a3649]">
-                      {[
-                        { name: 'Alex Morgan', email: 'alex@clutchbyte.com', role: 'Super Admin', status: 'Active', lastSeen: 'Just now' },
-                        { name: 'Sarah Chen', email: 'sarah.c@example.com', role: 'Developer', status: 'Active', lastSeen: '12m ago' },
-                        { name: 'James Wilson', email: 'j.wilson@example.com', role: 'User', status: 'Inactive', lastSeen: '2d ago' },
-                        { name: 'Elena Rodriguez', email: 'elena.r@example.com', role: 'User', status: 'Active', lastSeen: '1h ago' },
-                        { name: 'Marcus Thorne', email: 'marcus@example.com', role: 'Moderator', status: 'Active', lastSeen: '5m ago' },
-                      ].filter(user => 
-                        user.name.toLowerCase().includes(userSearchTerm.toLowerCase()) || 
-                        user.email.toLowerCase().includes(userSearchTerm.toLowerCase())
-                      ).map((user) => (
-                        <tr key={user.email} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
-                          <td className="px-6 py-4">
-                            <div className="flex items-center gap-3">
-                              <div className="h-8 w-8 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-slate-500 font-bold text-xs">
-                                {user.name.charAt(0)}
-                              </div>
-                              <div className="flex flex-col">
-                                <span className="text-sm font-semibold text-slate-900 dark:text-white">{user.name}</span>
-                                <span className="text-xs text-slate-500">{user.email}</span>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4">
-                            <span className="text-sm text-slate-600 dark:text-slate-300">{user.role}</span>
-                          </td>
-                          <td className="px-6 py-4">
-                            <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-medium ${user.status === 'Active' ? 'bg-[#0bda5e]/10 text-[#0bda5e]' : 'bg-slate-500/10 text-slate-500'}`}>
-                              <span className={`h-1 w-1 rounded-full ${user.status === 'Active' ? 'bg-[#0bda5e]' : 'bg-slate-500'}`}></span>
-                              {user.status}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 text-sm text-slate-500 dark:text-slate-400">{user.lastSeen}</td>
-                          <td className="px-6 py-4">
-                            <div className="flex items-center gap-2">
-                              <button className="p-1.5 text-slate-400 hover:text-[#135bec] hover:bg-[#135bec]/10 rounded transition-colors">
-                                <span className="material-symbols-outlined text-[18px]">edit</span>
-                              </button>
-                              <button className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-500/10 rounded transition-colors">
-                                <span className="material-symbols-outlined text-[18px]">block</span>
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          )}
+          {activeSection === 'users' && <UserManagement />}
 
           {activeSection === 'settings' && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -920,58 +1002,10 @@ export function AdminDashboard({ chats, settings, onClearAll, onClose }: AdminDa
             </div>
           )}
 
-          {activeSection === 'logs' && (
-            <div className="bg-white dark:bg-[#1a2332] rounded-xl border border-slate-200 dark:border-[#2a3649] shadow-sm overflow-hidden">
-              <div className="p-6 border-b border-slate-200 dark:border-[#2a3649] flex justify-between items-center">
-                <h3 className="text-lg font-bold text-slate-900 dark:text-white">System Activity Logs</h3>
-                <div className="flex items-center gap-2">
-                  <button className="p-2 text-slate-400 hover:text-white hover:bg-white/5 rounded transition-colors">
-                    <span className="material-symbols-outlined">download</span>
-                  </button>
-                  <button className="p-2 text-slate-400 hover:text-white hover:bg-white/5 rounded transition-colors">
-                    <span className="material-symbols-outlined">refresh</span>
-                  </button>
-                </div>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="bg-slate-50 dark:bg-slate-800/50">
-                      <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Timestamp</th>
-                      <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Level</th>
-                      <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Message</th>
-                      <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Source</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-200 dark:divide-[#2a3649] font-mono text-xs">
-                    {[
-                      { time: '2026-03-04 10:04:15', level: 'INFO', msg: 'System health check completed successfully', src: 'HealthMonitor' },
-                      { time: '2026-03-04 10:02:42', level: 'WARN', msg: 'High latency detected on OpenRouter gateway', src: 'APIProxy' },
-                      { time: '2026-03-04 09:58:12', level: 'INFO', msg: 'New model "Claude 3.5 Sonnet" registered', src: 'ModelManager' },
-                      { time: '2026-03-04 09:45:00', level: 'ERROR', msg: 'Failed to sync vector database index', src: 'PineconeSync' },
-                      { time: '2026-03-04 09:30:22', level: 'INFO', msg: 'User "Alex Morgan" logged in from 192.168.1.1', src: 'AuthService' },
-                      { time: '2026-03-04 09:15:10', level: 'INFO', msg: 'Automatic backup completed', src: 'BackupService' },
-                    ].map((log, idx) => (
-                      <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
-                        <td className="px-6 py-3 text-slate-500">{log.time}</td>
-                        <td className="px-6 py-3">
-                          <span className={`px-1.5 py-0.5 rounded ${log.level === 'ERROR' ? 'bg-red-500/10 text-red-500' : log.level === 'WARN' ? 'bg-orange-500/10 text-orange-500' : 'bg-blue-500/10 text-blue-500'}`}>
-                            {log.level}
-                          </span>
-                        </td>
-                        <td className="px-6 py-3 text-slate-900 dark:text-slate-200">{log.msg}</td>
-                        <td className="px-6 py-3 text-slate-500">{log.src}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              <div className="p-4 border-t border-slate-200 dark:border-[#2a3649] flex justify-center">
-                <button className="text-sm font-medium text-[#135bec] hover:underline">Load More Logs</button>
-              </div>
-            </div>
-          )}
-        </div>
+          {activeSection === 'logs' && <SystemLogs onBack={() => setActiveSection('dashboard')} />}
+        </>
+      )}
+    </div>
       </main>
     </motion.div>
   );
