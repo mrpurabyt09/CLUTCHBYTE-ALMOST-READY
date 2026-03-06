@@ -1,7 +1,8 @@
 import React from 'react';
-import { MODELS } from '../constants';
+import { useModels } from '../context/ModelContext';
 
 export const ModelsDirectory: React.FC = () => {
+  const { models } = useModels();
   return (
     <div className="flex-1 overflow-y-auto bg-white dark:bg-[#101622] p-8">
       <div className="max-w-6xl mx-auto">
@@ -11,7 +12,7 @@ export const ModelsDirectory: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {MODELS.map((model) => (
+          {models.map((model) => (
             <div key={model.id} className="relative group min-h-[260px]">
               {/* Main Card */}
               <div className="bg-white dark:bg-[#192233] border border-slate-200 dark:border-[#232f48] rounded-xl p-6 hover:shadow-lg transition-all flex flex-col h-full cursor-pointer">

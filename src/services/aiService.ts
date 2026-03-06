@@ -1,5 +1,77 @@
 import { GoogleGenAI, ThinkingLevel } from "@google/genai";
 import { Message, Settings } from "../types";
+import { puter } from '@heyputer/puter.js';
+
+export async function* streamGroq(messages: Message[], settings: Settings, model: string) {
+  const groqMessages = messages.map(m => ({
+    role: m.role === 'model' ? 'assistant' : m.role,
+    content: m.content
+  }));
+
+  if (settings.systemPrompt) {
+    groqMessages.unshift({ role: 'system', content: settings.systemPrompt });
+  }
+
+  const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${settings.groqApiKey}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      model: model,
+      messages: groqMessages,
+      stream: true
+    })
+  });
+
+  if (!response.ok) {
+    throw new Error(`Groq API Error: ${response.statusText}`);
+  }
+
+  const reader = response.body?.getReader();
+  if (!reader) throw new Error("No reader available");
+  
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split("\n");
+    buffer = lines.pop() || "";
+
+    for (const line of lines) {
+      if (line.trim() === "") continue;
+      if (line.trim() === "data: [DONE]") return;
+      if (line.startsWith("data: ")) {
+        try {
+          const data = JSON.parse(line.slice(6));
+          if (data.choices?.[0]?.delta?.content) {
+            yield data.choices[0].delta.content;
+          }
+        } catch (e) {
+          console.error("Error parsing Groq chunk", e);
+        }
+      }
+    }
+  }
+}
+
+export async function* streamPuter(messages: Message[], settings: Settings, model: string) {
+  const lastMessage = messages[messages.length - 1].content;
+  
+  const response = await puter.ai.chat(lastMessage, {
+    model: model,
+    stream: true
+  });
+  
+  for await (const part of response) {
+    yield part?.text || "";
+  }
+}
 
 export async function* streamOpenRouter(messages: Message[], settings: Settings, model: string) {
   const openRouterMessages = messages.map(m => ({

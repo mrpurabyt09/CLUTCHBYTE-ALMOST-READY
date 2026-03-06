@@ -73,10 +73,38 @@ export const MODELS = [
     latency: '~300ms',
     tokenUsage: 'N/A'
   },
+  { 
+    id: 'llama-3.3-70b-versatile', 
+    name: 'Llama 3.3 70B Versatile', 
+    provider: 'groq',
+    description: 'Highly versatile and powerful Llama 3.3 model for complex tasks.',
+    status: 'Operational',
+    latency: '~300ms',
+    tokenUsage: '128k context'
+  },
+  { 
+    id: 'mixtral-8x7b-32768', 
+    name: 'Mixtral 8x7B', 
+    provider: 'groq',
+    description: 'High-performance mixture-of-experts model for complex reasoning.',
+    status: 'Operational',
+    latency: '~400ms',
+    tokenUsage: '32k context'
+  },
+  { 
+    id: 'gemma2-9b-it', 
+    name: 'Gemma 2 9B', 
+    provider: 'groq',
+    description: 'Lightweight and efficient model for fast, high-quality responses.',
+    status: 'Operational',
+    latency: '~250ms',
+    tokenUsage: '8k context'
+  },
 ];
 
 export const DEFAULT_SETTINGS: Settings = {
   openRouterApiKey: '',
+  groqApiKey: '',
   defaultModel: 'gemini-3.1-flash-lite-preview',
   isDarkMode: false,
   systemPrompt: '',

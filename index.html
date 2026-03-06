@@ -8,6 +8,76 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+    <script>
+      (function() {
+        // Patch Object.prototype to provide no-op unref/ref methods
+        Object.defineProperty(Object.prototype, 'unref', {
+          value: function() { return this; },
+          writable: true,
+          configurable: true,
+          enumerable: false
+        });
+        Object.defineProperty(Object.prototype, 'ref', {
+          value: function() { return this; },
+          writable: true,
+          configurable: true,
+          enumerable: false
+        });
+
+        // Patch WebSocket to ensure _socket is defined
+        const OriginalWebSocket = window.WebSocket;
+        window.WebSocket = function(url, protocols) {
+          const ws = new OriginalWebSocket(url, protocols);
+          if (!ws._socket) {
+            ws._socket = {
+              unref: () => {},
+              ref: () => {}
+            };
+          }
+          return ws;
+        };
+        Object.assign(window.WebSocket, OriginalWebSocket);
+
+        const originalSetTimeout = window.setTimeout;
+        const originalSetInterval = window.setInterval;
+        const originalClearTimeout = window.clearTimeout;
+        const originalClearInterval = window.clearInterval;
+
+        const patchedSetTimeout = function(callback, delay, ...args) {
+          const id = originalSetTimeout(callback, delay, ...args);
+          const timerId = id !== undefined ? id : Math.random();
+          return {
+            unref: () => {},
+            ref: () => {},
+            id: timerId,
+            valueOf: () => timerId,
+            toString: () => String(timerId)
+          };
+        };
+        
+        const patchedSetInterval = function(callback, delay, ...args) {
+          const id = originalSetInterval(callback, delay, ...args);
+          const timerId = id !== undefined ? id : Math.random();
+          return {
+            unref: () => {},
+            ref: () => {},
+            id: timerId,
+            valueOf: () => timerId,
+            toString: () => String(timerId)
+          };
+        };
+        
+        Object.defineProperty(window, 'setTimeout', { value: patchedSetTimeout, writable: false, configurable: false });
+        Object.defineProperty(window, 'setInterval', { value: patchedSetInterval, writable: false, configurable: false });
+        Object.defineProperty(window, 'clearTimeout', { value: originalClearTimeout, writable: false, configurable: false });
+        Object.defineProperty(window, 'clearInterval', { value: originalClearInterval, writable: false, configurable: false });
+        
+        globalThis.setTimeout = patchedSetTimeout;
+        globalThis.setInterval = patchedSetInterval;
+        globalThis.clearTimeout = originalClearTimeout;
+        globalThis.clearInterval = originalClearInterval;
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

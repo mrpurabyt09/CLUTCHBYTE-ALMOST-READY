@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
+import { useModels } from '../../context/ModelContext';
 
 interface ModelFormProps {
   mode: 'add' | 'edit';
@@ -8,9 +9,29 @@ interface ModelFormProps {
 }
 
 export function ModelForm({ mode, initialData, onBack }: ModelFormProps) {
+  const { addModel, updateModel } = useModels();
   const [temperature, setTemperature] = useState(initialData?.temperature || 0.7);
   const [topP, setTopP] = useState(initialData?.topP || 1.0);
   const [showApiKey, setShowApiKey] = useState(false);
+
+  const handleSave = () => {
+    const modelData = {
+      id: initialData?.id || Math.random().toString(36).substr(2, 9),
+      name: (document.getElementById('modelName') as HTMLInputElement).value,
+      provider: (document.getElementById('provider') as HTMLSelectElement).value,
+      description: (document.getElementById('description') as HTMLTextAreaElement).value,
+      latency: (document.getElementById('latency') as HTMLInputElement).value,
+      status: 'Operational',
+      tokenUsage: '128k',
+    };
+
+    if (mode === 'add') {
+      addModel(modelData);
+    } else {
+      updateModel(initialData.id, modelData);
+    }
+    onBack();
+  };
 
   const title = mode === 'add' ? 'Add New AI Model' : `Edit Model: ${initialData?.name || 'GPT-4 Vision'}`;
   const subtitle = mode === 'add' 
@@ -55,7 +76,9 @@ export function ModelForm({ mode, initialData, onBack }: ModelFormProps) {
               >
                 Cancel
               </button>
-              <button className="px-5 py-2.5 rounded-lg bg-[#135bec] hover:bg-blue-600 text-white font-bold transition-colors shadow-lg shadow-blue-900/20 text-sm flex items-center gap-2">
+              <button 
+                onClick={handleSave}
+                className="px-5 py-2.5 rounded-lg bg-[#135bec] hover:bg-blue-600 text-white font-bold transition-colors shadow-lg shadow-blue-900/20 text-sm flex items-center gap-2">
                 <span className="material-symbols-outlined text-[18px]">save</span>
                 {mode === 'add' ? 'Save Configuration' : 'Save Changes'}
               </button>
@@ -98,6 +121,17 @@ export function ModelForm({ mode, initialData, onBack }: ModelFormProps) {
                       <span className="material-symbols-outlined absolute left-3 top-3.5 text-slate-400 text-[18px]">tag</span>
                     </div>
                   </div>
+                  {/* Average Latency */}
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300" htmlFor="latency">Average Latency</label>
+                    <input 
+                      className="w-full bg-slate-50 dark:bg-[#192233] border border-slate-200 dark:border-[#2a364d] rounded-lg px-4 py-3 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#135bec]/50 focus:border-[#135bec] transition-all" 
+                      id="latency" 
+                      placeholder="e.g. ~400ms" 
+                      type="text"
+                      defaultValue={initialData?.latency}
+                    />
+                  </div>
                   {/* Provider */}
                   <div className="space-y-2 md:col-span-2">
                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300" htmlFor="provider">Model Provider</label>
@@ -111,6 +145,7 @@ export function ModelForm({ mode, initialData, onBack }: ModelFormProps) {
                       <option value="anthropic">Anthropic (Claude 3)</option>
                       <option value="ollama">Ollama (Local)</option>
                       <option value="openrouter">OpenRouter</option>
+                      <option value="groq">Groq</option>
                       <option value="custom">Custom HTTP Endpoint</option>
                     </select>
                   </div>
@@ -156,20 +191,39 @@ export function ModelForm({ mode, initialData, onBack }: ModelFormProps) {
                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300" htmlFor="apiKey">API Key / Secret Token</label>
                     <div className="relative">
                       <input 
-                        className="w-full bg-slate-50 dark:bg-[#192233] border border-slate-200 dark:border-[#2a364d] rounded-lg px-4 py-3 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#135bec]/50 focus:border-[#135bec] transition-all pr-12 font-mono text-sm tracking-wide" 
+                        className="w-full bg-slate-50 dark:bg-[#192233] border border-slate-200 dark:border-[#2a364d] rounded-lg px-4 py-3 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#135bec]/50 focus:border-[#135bec] transition-all pr-24 font-mono text-sm tracking-wide" 
                         id="apiKey" 
                         type={showApiKey ? "text" : "password"}
                         placeholder="sk-..."
                         defaultValue={initialData?.apiKey}
                       />
-                      <button 
-                        onClick={() => setShowApiKey(!showApiKey)}
-                        className="absolute right-3 top-2.5 text-slate-400 hover:text-[#135bec] transition-colors p-1 rounded-md hover:bg-slate-200 dark:hover:bg-slate-800"
-                      >
-                        <span className="material-symbols-outlined text-[20px]">
-                          {showApiKey ? 'visibility' : 'visibility_off'}
-                        </span>
-                      </button>
+                      <div className="absolute right-2 top-2 flex gap-1">
+                        <button 
+                          onClick={() => setShowApiKey(!showApiKey)}
+                          className="text-slate-400 hover:text-[#135bec] transition-colors p-1 rounded-md hover:bg-slate-200 dark:hover:bg-slate-800"
+                        >
+                          <span className="material-symbols-outlined text-[20px]">
+                            {showApiKey ? 'visibility' : 'visibility_off'}
+                          </span>
+                        </button>
+                        <button 
+                          onClick={async () => {
+                            const start = performance.now();
+                            const endpoint = (document.getElementById('endpoint') as HTMLInputElement).value;
+                            try {
+                              await fetch(`https://${endpoint}`, { method: 'HEAD' });
+                              const end = performance.now();
+                              const latency = Math.round(end - start);
+                              (document.getElementById('latency') as HTMLInputElement).value = `~${latency}ms`;
+                            } catch (e) {
+                              alert('Connection failed');
+                            }
+                          }}
+                          className="text-slate-400 hover:text-[#135bec] transition-colors p-1 rounded-md hover:bg-slate-200 dark:hover:bg-slate-800"
+                        >
+                          <span className="material-symbols-outlined text-[20px]">bolt</span>
+                        </button>
+                      </div>
                     </div>
                     <p className="text-xs text-slate-500 mt-1 flex items-center gap-1">
                       <span className="material-symbols-outlined text-[14px]">lock</span>

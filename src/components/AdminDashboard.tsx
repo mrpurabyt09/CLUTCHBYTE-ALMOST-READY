@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { motion } from 'motion/react';
+import { useModels } from '../context/ModelContext';
 import { Chat, Settings } from '../types';
 import { X } from 'lucide-react';
 import {
@@ -27,9 +28,12 @@ interface AdminDashboardProps {
 }
 
 export function AdminDashboard({ chats, settings, onClearAll, onClose, onUpdateSettings }: AdminDashboardProps) {
+  const { models, deleteModel } = useModels();
   const [activeSection, setActiveSection] = useState('dashboard');
   const [userSearchTerm, setUserSearchTerm] = useState('');
   const [detailView, setDetailView] = useState<{ type: string; id?: string } | null>(null);
+  const [localGroqApiKey, setLocalGroqApiKey] = useState(settings.groqApiKey);
+  const [localOpenRouterApiKey, setLocalOpenRouterApiKey] = useState(settings.openRouterApiKey);
 
   const toggleTheme = () => {
     onUpdateSettings({
@@ -332,7 +336,7 @@ export function AdminDashboard({ chats, settings, onClearAll, onClose, onUpdateS
               {detailView.type === 'edit-model' && (
                 <ModelForm 
                   mode="edit" 
-                  initialData={{ name: 'GPT-4 Vision', slug: 'gpt-4-vision-preview', provider: 'openai' }} 
+                  initialData={models.find(m => m.id === detailView.id)} 
                   onBack={() => setDetailView(null)} 
                 />
               )}
@@ -836,14 +840,8 @@ export function AdminDashboard({ chats, settings, onClearAll, onClose, onUpdateS
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-200 dark:divide-[#2a3649]">
-                      {[
-                        { name: 'Gemini 3.1 Pro', provider: 'Google', status: 'Operational', usage: '45.2k' },
-                        { name: 'GPT-4o', provider: 'OpenAI', status: 'Operational', usage: '32.1k' },
-                        { name: 'Claude 3.5 Sonnet', provider: 'Anthropic', status: 'Operational', usage: '28.5k' },
-                        { name: 'Llama 3.1 70B', provider: 'Ollama', status: 'Standby', usage: '12.4k' },
-                        { name: 'Mistral Large', provider: 'Mistral', status: 'Operational', usage: '8.2k' },
-                      ].map((model) => (
-                        <tr key={model.name} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+                      {models.map((model) => (
+                        <tr key={model.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
                           <td className="px-6 py-4">
                             <div className="flex items-center gap-3">
                               <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-500">
@@ -859,22 +857,25 @@ export function AdminDashboard({ chats, settings, onClearAll, onClose, onUpdateS
                               {model.status}
                             </span>
                           </td>
-                          <td className="px-6 py-4 text-sm text-slate-500 dark:text-slate-400">{model.usage}</td>
+                          <td className="px-6 py-4 text-sm text-slate-500 dark:text-slate-400">{model.tokenUsage}</td>
                           <td className="px-6 py-4">
                             <div className="flex items-center gap-2">
                               <button 
-                                onClick={() => setDetailView({ type: 'model-details', id: model.name })}
+                                onClick={() => setDetailView({ type: 'model-details', id: model.id })}
                                 className="p-1.5 text-slate-400 hover:text-[#135bec] hover:bg-[#135bec]/10 rounded transition-colors"
                               >
                                 <span className="material-symbols-outlined text-[18px]">visibility</span>
                               </button>
                               <button 
-                                onClick={() => setDetailView({ type: 'edit-model', id: model.name })}
+                                onClick={() => setDetailView({ type: 'edit-model', id: model.id })}
                                 className="p-1.5 text-slate-400 hover:text-[#135bec] hover:bg-[#135bec]/10 rounded transition-colors"
                               >
                                 <span className="material-symbols-outlined text-[18px]">settings</span>
                               </button>
-                              <button className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-500/10 rounded transition-colors">
+                              <button 
+                                onClick={() => deleteModel(model.id)}
+                                className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-500/10 rounded transition-colors"
+                              >
                                 <span className="material-symbols-outlined text-[18px]">delete</span>
                               </button>
                             </div>
@@ -903,13 +904,28 @@ export function AdminDashboard({ chats, settings, onClearAll, onClose, onUpdateS
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-slate-500 dark:text-slate-400 mb-1.5">OpenRouter API Key</label>
-                    <input type="password" value="••••••••••••••••" readOnly className="w-full bg-slate-100 dark:bg-slate-800 border-none rounded-lg px-4 py-2 text-sm focus:ring-1 focus:ring-[#135bec]" />
+                    <input 
+                      type="password" 
+                      value={localOpenRouterApiKey} 
+                      onChange={(e) => setLocalOpenRouterApiKey(e.target.value)}
+                      className="w-full bg-slate-100 dark:bg-slate-800 border-none rounded-lg px-4 py-2 text-sm focus:ring-1 focus:ring-[#135bec]" 
+                    />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-500 dark:text-slate-400 mb-1.5">Ollama Endpoint</label>
-                    <input type="text" value="http://localhost:11434" readOnly className="w-full bg-slate-100 dark:bg-slate-800 border-none rounded-lg px-4 py-2 text-sm focus:ring-1 focus:ring-[#135bec]" />
+                    <label className="block text-sm font-medium text-slate-500 dark:text-slate-400 mb-1.5">Groq API Key</label>
+                    <input 
+                      type="password" 
+                      value={localGroqApiKey} 
+                      onChange={(e) => setLocalGroqApiKey(e.target.value)}
+                      className="w-full bg-slate-100 dark:bg-slate-800 border-none rounded-lg px-4 py-2 text-sm focus:ring-1 focus:ring-[#135bec]" 
+                    />
                   </div>
-                  <button className="w-full py-2 bg-[#135bec] text-white rounded-lg text-sm font-bold hover:bg-[#135bec]/90 transition-colors">Save API Settings</button>
+                  <button 
+                    onClick={() => onUpdateSettings({...settings, groqApiKey: localGroqApiKey, openRouterApiKey: localOpenRouterApiKey})} 
+                    className="w-full py-2 bg-[#135bec] text-white rounded-lg text-sm font-bold hover:bg-[#135bec]/90 transition-colors"
+                  >
+                    Save API Settings
+                  </button>
                 </div>
               </div>
 
@@ -927,8 +943,11 @@ export function AdminDashboard({ chats, settings, onClearAll, onClose, onUpdateS
                       <p className="text-sm font-bold text-slate-900 dark:text-white">Dark Mode</p>
                       <p className="text-xs text-slate-500">Toggle system-wide dark theme</p>
                     </div>
-                    <div className="w-10 h-5 bg-[#135bec] rounded-full relative cursor-pointer">
-                      <div className="absolute right-0.5 top-0.5 w-4 h-4 bg-white rounded-full shadow-sm"></div>
+                    <div 
+                      onClick={toggleTheme}
+                      className={`w-10 h-5 rounded-full relative cursor-pointer transition-colors ${settings.isDarkMode ? 'bg-[#135bec]' : 'bg-slate-300'}`}
+                    >
+                      <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-all ${settings.isDarkMode ? 'right-0.5' : 'left-0.5'}`}></div>
                     </div>
                   </div>
                   <div className="flex items-center justify-between">

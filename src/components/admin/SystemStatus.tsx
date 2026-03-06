@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 
 interface SystemStatusProps {
@@ -6,6 +6,38 @@ interface SystemStatusProps {
 }
 
 export function SystemStatus({ onNavigate }: SystemStatusProps) {
+  const [services, setServices] = useState([
+    { name: 'Core API Gateway', icon: 'api', uptime: '99.4%', status: 'degraded', latency: 42 },
+    { name: 'Inference Engine', icon: 'psychology', uptime: '99.9%', status: 'operational', latency: 124 },
+    { name: 'Vector Database', icon: 'database', uptime: '100%', status: 'operational', latency: 8 },
+    { name: 'Auth Service', icon: 'lock', uptime: '100%', status: 'operational', latency: 15 },
+    { name: 'Web Dashboard', icon: 'dashboard', uptime: '100%', status: 'operational', latency: 24 },
+    { name: 'CDN Edge', icon: 'language', uptime: '99.9%', status: 'operational', latency: 12 },
+    { name: 'Storage Cluster', icon: 'folder_shared', uptime: '100%', status: 'operational', latency: 31 },
+    { name: 'Monitoring Stack', icon: 'monitoring', uptime: '100%', status: 'operational', latency: 5 },
+  ]);
+
+  const [regionalMetrics, setRegionalMetrics] = useState([
+    { region: 'US-East (N. Virginia)', provider: 'AWS', status: 'Degraded', latency: 142, color: 'yellow' },
+    { region: 'US-West (Oregon)', provider: 'GCP', status: 'Operational', latency: 28, color: 'emerald' },
+    { region: 'EU-Central (Frankfurt)', provider: 'Azure', status: 'Operational', latency: 34, color: 'emerald' },
+    { region: 'Asia-East (Taiwan)', provider: 'GCP', status: 'Operational', latency: 41, color: 'emerald' },
+  ]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setServices(prev => prev.map(s => ({
+        ...s,
+        latency: Math.max(5, s.latency + Math.floor(Math.random() * 21 - 10))
+      })));
+      setRegionalMetrics(prev => prev.map(r => ({
+        ...r,
+        latency: Math.max(5, r.latency + Math.floor(Math.random() * 21 - 10))
+      })));
+    }, 2000);
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <motion.div 
       initial={{ opacity: 0, y: 20 }}
@@ -106,16 +138,7 @@ export function SystemStatus({ onNavigate }: SystemStatusProps) {
 
           {/* Service Grid - Full Width */}
           <div className="md:col-span-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mt-4">
-            {[
-              { name: 'Core API Gateway', icon: 'api', uptime: '99.4%', status: 'degraded', latency: '42ms' },
-              { name: 'Inference Engine', icon: 'psychology', uptime: '99.9%', status: 'operational', latency: '124ms' },
-              { name: 'Vector Database', icon: 'database', uptime: '100%', status: 'operational', latency: '8ms' },
-              { name: 'Auth Service', icon: 'lock', uptime: '100%', status: 'operational', latency: '15ms' },
-              { name: 'Web Dashboard', icon: 'dashboard', uptime: '100%', status: 'operational', latency: '24ms' },
-              { name: 'CDN Edge', icon: 'language', uptime: '99.9%', status: 'operational', latency: '12ms' },
-              { name: 'Storage Cluster', icon: 'folder_shared', uptime: '100%', status: 'operational', latency: '31ms' },
-              { name: 'Monitoring Stack', icon: 'monitoring', uptime: '100%', status: 'operational', latency: '5ms' },
-            ].map((service) => (
+            {services.map((service) => (
               <div key={service.name} className="bg-white dark:bg-[#1a2332] p-6 rounded-3xl border border-slate-200 dark:border-[#324467] hover:shadow-md transition-all group">
                 <div className="flex items-center justify-between mb-6">
                   <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${service.status === 'operational' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-yellow-500/10 text-yellow-500'}`}>
@@ -131,7 +154,7 @@ export function SystemStatus({ onNavigate }: SystemStatusProps) {
                   </div>
                   <div className="flex flex-col items-end">
                     <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Latency</span>
-                    <span className="text-sm font-mono font-bold text-slate-700 dark:text-slate-300">{service.latency}</span>
+                    <span className="text-sm font-mono font-bold text-slate-700 dark:text-slate-300">{service.latency}ms</span>
                   </div>
                 </div>
               </div>
@@ -164,12 +187,7 @@ export function SystemStatus({ onNavigate }: SystemStatusProps) {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-[#232f48]">
-                  {[
-                    { region: 'US-East (N. Virginia)', provider: 'AWS', status: 'Degraded', latency: '142ms', color: 'yellow' },
-                    { region: 'US-West (Oregon)', provider: 'GCP', status: 'Operational', latency: '28ms', color: 'emerald' },
-                    { region: 'EU-Central (Frankfurt)', provider: 'Azure', status: 'Operational', latency: '34ms', color: 'emerald' },
-                    { region: 'Asia-East (Taiwan)', provider: 'GCP', status: 'Operational', latency: '41ms', color: 'emerald' },
-                  ].map((row) => (
+                  {regionalMetrics.map((row) => (
                     <tr key={row.region} className="hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors">
                       <td className="px-8 py-5 font-bold text-slate-900 dark:text-white">{row.region}</td>
                       <td className="px-8 py-5 text-sm text-slate-500">{row.provider}</td>
@@ -178,7 +196,7 @@ export function SystemStatus({ onNavigate }: SystemStatusProps) {
                           {row.status}
                         </span>
                       </td>
-                      <td className="px-8 py-5 text-right font-mono text-sm font-bold text-slate-700 dark:text-slate-300">{row.latency}</td>
+                      <td className="px-8 py-5 text-right font-mono text-sm font-bold text-slate-700 dark:text-slate-300">{row.latency}ms</td>
                     </tr>
                   ))}
                 </tbody>

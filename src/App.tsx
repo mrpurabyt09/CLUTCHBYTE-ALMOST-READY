@@ -12,7 +12,7 @@ import { Login } from './components/auth/Login';
 import { Registration } from './components/auth/Registration';
 import { ResetPassword } from './components/auth/ResetPassword';
 import { SetNewPassword } from './components/auth/SetNewPassword';
-import { streamOpenRouter, streamGemini, generateImage, generateSpeech } from './services/aiService';
+import { streamOpenRouter, streamGemini, streamGroq, generateImage, generateSpeech } from './services/aiService';
 import { useAuth } from './context/AuthContext';
 
 export default function App() {
@@ -255,6 +255,20 @@ export default function App() {
       } else if (model.provider === 'openrouter') {
         if (!settings.openRouterApiKey) throw new Error("OpenRouter API Key is missing. Please set it in Settings.");
         const stream = streamOpenRouter(messagesToSent, settings, model.id);
+        for await (const chunk of stream) {
+          setChats(prev => prev.map(c => {
+            if (c.id === chatId) {
+              return {
+                ...c,
+                messages: c.messages.map(m => m.id === aiMessageId ? { ...m, content: m.content + chunk } : m)
+              };
+            }
+            return c;
+          }));
+        }
+      } else if (model.provider === 'groq') {
+        if (!settings.groqApiKey) throw new Error("Groq API Key is missing. Please set it in Settings.");
+        const stream = streamGroq(messagesToSent, settings, model.id);
         for await (const chunk of stream) {
           setChats(prev => prev.map(c => {
             if (c.id === chatId) {
