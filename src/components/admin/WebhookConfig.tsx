@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { 
   Plus, Network, History, Copy, Eye, 
   Edit, Trash2, AlertTriangle, ChevronRight, RotateCcw,
   Search, Info, ExternalLink
 } from 'lucide-react';
+import { collection, query, orderBy, limit, onSnapshot, addDoc, serverTimestamp, deleteDoc, doc, updateDoc } from 'firebase/firestore';
+import { db } from '../../firebase';
 
 interface WebhookConfigProps {
   onBack: () => void;
@@ -12,68 +14,71 @@ interface WebhookConfigProps {
 
 export function WebhookConfig({ onBack }: WebhookConfigProps) {
   const [showSecrets, setShowSecrets] = useState<Record<string, boolean>>({});
+  const [endpoints, setEndpoints] = useState<any[]>([]);
+  const [deliveries, setDeliveries] = useState<any[]>([]);
+
+  useEffect(() => {
+    const qEndpoints = query(collection(db, 'webhooks'));
+    const unsubscribeEndpoints = onSnapshot(qEndpoints, (snapshot) => {
+      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setEndpoints(data);
+    });
+
+    const qDeliveries = query(collection(db, 'webhook_deliveries'), orderBy('time', 'desc'), limit(50));
+    const unsubscribeDeliveries = onSnapshot(qDeliveries, (snapshot) => {
+      const data = snapshot.docs.map(doc => {
+        const d = doc.data();
+        return { 
+            id: doc.id, 
+            ...d,
+            time: d.time?.toDate ? d.time.toDate().toLocaleString() : new Date().toLocaleString()
+        };
+      });
+      setDeliveries(data);
+    });
+
+    return () => {
+      unsubscribeEndpoints();
+      unsubscribeDeliveries();
+    };
+  }, []);
 
   const toggleSecret = (id: string) => {
     setShowSecrets(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
-  const endpoints = [
-    {
-      id: '1',
-      url: 'https://api.myapp.com/clutchbyte-hook',
-      lastActive: '2 mins ago',
-      events: ['message.created', 'system.health_alert', 'provider.status_change'],
-      status: 'Active',
-      secret: 'whsec_5f8a9b2c3d4e5f6g7h8i9j0k'
-    },
-    {
-      id: '2',
-      url: 'https://staging.myapp.com/test-hook',
-      lastActive: '1 hour ago',
-      events: ['conversation.ended', 'system.latency_spike'],
-      status: 'Failing',
-      secret: 'whsec_1a2b3c4d5e6f7g8h9i0j1k2l'
+  const addSimulatedEndpoint = async () => {
+    try {
+      await addDoc(collection(db, 'webhooks'), {
+        url: `https://api.example.com/hook-${Math.floor(Math.random() * 1000)}`,
+        lastActive: 'Just now',
+        events: ['message.created', 'system.health_alert'],
+        status: 'Active',
+        secret: `whsec_${Math.random().toString(36).substring(2, 15)}`
+      });
+    } catch (error) {
+      console.error("Error adding endpoint:", error);
     }
-  ];
+  };
 
-  const deliveries = [
-    {
-      id: 'req_89234857203',
-      status: '200 OK',
-      statusType: 'success',
-      method: 'POST',
-      event: 'system.health_alert',
-      time: 'Nov 14, 10:23 AM',
-      duration: '240ms'
-    },
-    {
-      id: 'req_89234856992',
-      status: '500 Err',
-      statusType: 'error',
-      method: 'POST',
-      event: 'provider.status_change',
-      time: 'Nov 14, 09:15 AM',
-      duration: '5002ms'
-    },
-    {
-      id: 'req_89234856110',
-      status: '200 OK',
-      statusType: 'success',
-      method: 'POST',
-      event: 'system.latency_spike',
-      time: 'Nov 14, 08:42 AM',
-      duration: '120ms'
-    },
-    {
-      id: 'req_89234855001',
-      status: '200 OK',
-      statusType: 'success',
-      method: 'POST',
-      event: 'message.created',
-      time: 'Nov 14, 08:30 AM',
-      duration: '185ms'
+  const addSimulatedDelivery = async () => {
+    const events = ['message.created', 'system.health_alert', 'provider.status_change', 'system.latency_spike'];
+    const statuses = ['200 OK', '500 Err', '404 Not Found'];
+    const randomStatus = statuses[Math.floor(Math.random() * statuses.length)];
+    
+    try {
+      await addDoc(collection(db, 'webhook_deliveries'), {
+        status: randomStatus,
+        statusType: randomStatus.startsWith('2') ? 'success' : 'error',
+        method: 'POST',
+        event: events[Math.floor(Math.random() * events.length)],
+        time: serverTimestamp(),
+        duration: `${Math.floor(Math.random() * 500)}ms`
+      });
+    } catch (error) {
+      console.error("Error adding delivery:", error);
     }
-  ];
+  };
 
   return (
     <motion.div 
@@ -91,11 +96,21 @@ export function WebhookConfig({ onBack }: WebhookConfigProps) {
               <p className="text-slate-500 dark:text-slate-400 text-base font-normal">Configure endpoints to receive real-time events from ClutchByte.</p>
             </div>
             <div className="flex items-center gap-3">
+              <button 
+                onClick={addSimulatedDelivery}
+                className="flex items-center justify-center gap-2 rounded-lg bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors h-10 px-4 text-slate-700 dark:text-slate-200 text-sm font-bold"
+              >
+                <Plus size={18} />
+                <span>Simulate Delivery</span>
+              </button>
               <button className="flex items-center justify-center gap-2 rounded-lg bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors h-10 px-4 text-slate-700 dark:text-slate-200 text-sm font-bold">
                 <RotateCcw size={18} />
                 <span>Reset Keys</span>
               </button>
-              <button className="flex items-center justify-center gap-2 rounded-lg bg-[#135bec] hover:bg-blue-600 transition-colors h-10 px-4 text-white text-sm font-bold shadow-lg shadow-blue-500/20">
+              <button 
+                onClick={addSimulatedEndpoint}
+                className="flex items-center justify-center gap-2 rounded-lg bg-[#135bec] hover:bg-blue-600 transition-colors h-10 px-4 text-white text-sm font-bold shadow-lg shadow-blue-500/20"
+              >
                 <Plus size={20} />
                 <span>Add Endpoint</span>
               </button>

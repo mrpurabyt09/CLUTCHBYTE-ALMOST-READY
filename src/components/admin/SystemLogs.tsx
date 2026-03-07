@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'motion/react';
-import { Search, Terminal, Trash2, Download, Pause, Play, Settings, ChevronLeft } from 'lucide-react';
+import { Search, Terminal, Trash2, Download, Pause, Play, Settings, ChevronLeft, Plus } from 'lucide-react';
+import { collection, query, orderBy, limit, onSnapshot, addDoc, serverTimestamp } from 'firebase/firestore';
+import { db } from '../../firebase';
 
 interface SystemLogsProps {
   onBack: () => void;
@@ -8,7 +10,7 @@ interface SystemLogsProps {
 
 interface LogEntry {
   id: string;
-  timestamp: string;
+  timestamp: any;
   service: string;
   level: 'INFO' | 'WARN' | 'ERROR';
   message: string;
@@ -17,17 +19,63 @@ interface LogEntry {
 
 export function SystemLogs({ onBack }: SystemLogsProps) {
   const [isPaused, setIsPaused] = useState(false);
-  const [logs, setLogs] = useState<LogEntry[]>([
-    { id: '1', timestamp: '10:42:01', service: '[API-Gateway]', level: 'INFO', message: 'Incoming request from ID: user_882. Route: /api/v1/models/list', color: 'text-purple-400' },
-    { id: '2', timestamp: '10:42:02', service: '[DB-Shard-01]', level: 'INFO', message: 'Query executed in 45ms. Rows affected: 1.', color: 'text-emerald-400' },
-    { id: '3', timestamp: '10:42:05', service: '[Auth-Svc]', level: 'WARN', message: 'Token expiry imminent for session_991. Refresh recommended within 60s.', color: 'text-amber-400' },
-    { id: '4', timestamp: '10:42:08', service: '[API-Gateway]', level: 'INFO', message: 'Rate limit check passed for IP: 192.168.0.104', color: 'text-purple-400' },
-    { id: '5', timestamp: '10:42:15', service: '[Inference]', level: 'ERROR', message: 'CUDA Out of Memory Exception on GPU-02. Attempting soft restart of worker node...', color: 'text-rose-500' },
-    { id: '6', timestamp: '10:42:16', service: '[Inference]', level: 'WARN', message: 'GPU-02 High Temperature Warning (88°C). Throttling performance.', color: 'text-rose-500' },
-    { id: '7', timestamp: '10:42:18', service: '[Sys-Monitor]', level: 'INFO', message: 'Heap memory usage: 64% (2.4GB / 3.7GB). GC cycle scheduled.', color: 'text-cyan-400' },
-  ]);
-
+  const [logs, setLogs] = useState<LogEntry[]>([]);
   const logEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const q = query(collection(db, 'system_logs'), orderBy('timestamp', 'asc'), limit(100));
+    
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      if (isPaused) return;
+      
+      const newLogs = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...data,
+          timestamp: data.timestamp?.toDate ? data.timestamp.toDate().toLocaleTimeString() : new Date().toLocaleTimeString()
+        } as LogEntry;
+      });
+      setLogs(newLogs);
+    });
+
+    return () => unsubscribe();
+  }, [isPaused]);
+
+  const addSimulatedLog = async () => {
+    const services = ['[API-Gateway]', '[DB-Shard-01]', '[Auth-Svc]', '[Inference]', '[Sys-Monitor]'];
+    const levels = ['INFO', 'WARN', 'ERROR'] as const;
+    const messages = [
+      'Incoming request processed successfully',
+      'High latency detected',
+      'Database connection pool exhausted',
+      'User authentication failed',
+      'Cache miss ratio high',
+      'Rate limit exceeded',
+      'Service health check passed'
+    ];
+    const colors = {
+      'INFO': 'text-purple-400',
+      'WARN': 'text-amber-400',
+      'ERROR': 'text-rose-500'
+    };
+
+    const randomService = services[Math.floor(Math.random() * services.length)];
+    const randomLevel = levels[Math.floor(Math.random() * levels.length)];
+    const randomMessage = messages[Math.floor(Math.random() * messages.length)];
+
+    try {
+      await addDoc(collection(db, 'system_logs'), {
+        timestamp: serverTimestamp(),
+        service: randomService,
+        level: randomLevel,
+        message: randomMessage,
+        color: colors[randomLevel]
+      });
+    } catch (error) {
+      console.error("Error adding log:", error);
+    }
+  };
 
   useEffect(() => {
     if (!isPaused) {
@@ -67,6 +115,12 @@ export function SystemLogs({ onBack }: SystemLogsProps) {
             >
               {isPaused ? <Play size={18} /> : <Pause size={18} />}
               {isPaused ? 'Resume Feed' : 'Pause Feed'}
+            </button>
+            <button 
+              onClick={addSimulatedLog}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700 transition-all text-sm font-medium"
+            >
+              <Plus size={18} /> Simulate
             </button>
             <button className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700 transition-all text-sm font-medium">
               <Trash2 size={18} /> Clear

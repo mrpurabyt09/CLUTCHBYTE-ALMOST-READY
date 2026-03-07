@@ -12,6 +12,7 @@ import { auth, db } from '../firebase';
 
 interface AuthContextType {
   user: FirebaseUser | null;
+  role: 'user' | 'admin' | null;
   loading: boolean;
   signInWithGoogle: () => Promise<void>;
   signInWithGithub: () => Promise<void>;
@@ -22,6 +23,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<FirebaseUser | null>(null);
+  const [role, setRole] = useState<'user' | 'admin' | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -32,17 +34,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const userSnap = await getDoc(userRef);
 
         if (!userSnap.exists()) {
-          await setDoc(userRef, {
+          const newUser = {
             uid: firebaseUser.uid,
             email: firebaseUser.email,
             fullName: firebaseUser.displayName || 'Anonymous',
             createdAt: serverTimestamp(),
-            role: 'user'
-          });
+            role: firebaseUser.email === 'purabyt09@gmail.com' ? 'admin' : 'user',
+            photoURL: firebaseUser.photoURL || null,
+            status: 'active'
+          };
+          await setDoc(userRef, newUser);
+          setRole(newUser.role as any);
+        } else {
+          const userData = userSnap.data();
+          // Enforce admin role for specific email if not already set
+          if (firebaseUser.email === 'purabyt09@gmail.com' && userData?.role !== 'admin') {
+            await setDoc(userRef, { role: 'admin' }, { merge: true });
+            setRole('admin');
+          } else {
+            setRole(userData?.role || 'user');
+          }
         }
         setUser(firebaseUser);
       } else {
         setUser(null);
+        setRole(null);
       }
       setLoading(false);
     });
@@ -65,7 +81,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, signInWithGoogle, signInWithGithub, logout }}>
+    <AuthContext.Provider value={{ user, role, loading, signInWithGoogle, signInWithGithub, logout }}>
       {children}
     </AuthContext.Provider>
   );

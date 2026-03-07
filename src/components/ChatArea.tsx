@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Chat, Message } from '../types';
-import { MODELS } from '../constants';
+import { useModels } from '../context/ModelContext';
 import { Menu, Send, Image as ImageIcon, Mic, ChevronDown, Share, History, Copy, RefreshCw, ThumbsUp, Paperclip, Wand2, ArrowUp, Bot } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -16,10 +16,13 @@ interface ChatAreaProps {
   onOpenSidebar: () => void;
   onOpenLiveAudio: () => void;
   onChangeModel: (modelId: string) => void;
+  onOpenSettings?: () => void;
   currentModel: string;
+  user: any;
 }
 
-export function ChatArea({ chat, onSendMessage, isGenerating, onOpenSidebar, onOpenLiveAudio, onChangeModel, currentModel }: ChatAreaProps) {
+export function ChatArea({ chat, onSendMessage, isGenerating, onOpenSidebar, onOpenLiveAudio, onChangeModel, onOpenSettings, currentModel, user }: ChatAreaProps) {
+  const { models } = useModels();
   const [input, setInput] = useState('');
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [imageSize, setImageSize] = useState('1K');
@@ -78,7 +81,7 @@ export function ChatArea({ chat, onSendMessage, isGenerating, onOpenSidebar, onO
     }
   };
 
-  const currentModelObj = MODELS.find(m => m.id === currentModel) || MODELS[0];
+  const currentModelObj = models.find(m => m.id === currentModel) || models[0];
 
   return (
     <div className="flex flex-col h-full w-full bg-background-dark relative">
@@ -114,7 +117,7 @@ export function ChatArea({ chat, onSendMessage, isGenerating, onOpenSidebar, onO
             </div>
           ) : (
             chat.messages.map((msg) => (
-              <MessageBubble key={msg.id} message={msg} onChangeModel={onChangeModel} />
+              <MessageBubble key={msg.id} message={msg} onChangeModel={onChangeModel} onOpenSettings={onOpenSettings} user={user} />
             ))
           )}
           {isGenerating && (
@@ -155,7 +158,7 @@ export function ChatArea({ chat, onSendMessage, isGenerating, onOpenSidebar, onO
                   onChange={(e) => onChangeModel(e.target.value)}
                   className="appearance-none bg-surface-dark text-sm font-medium text-white hover:bg-surface-darker px-3 py-1.5 rounded-lg transition-colors outline-none cursor-pointer pr-8 border border-border-dark"
                 >
-                  {MODELS.map(m => (
+                  {models.map(m => (
                     <option key={m.id} value={m.id} className="text-base bg-surface-dark text-white">
                       {m.name}
                     </option>
@@ -258,18 +261,20 @@ export function ChatArea({ chat, onSendMessage, isGenerating, onOpenSidebar, onO
   );
 }
 
-function MessageBubble({ message, onChangeModel }: { message: Message, onChangeModel?: (modelId: string) => void }) {
+function MessageBubble({ message, onChangeModel, onOpenSettings, user }: { message: Message, onChangeModel?: (modelId: string) => void, onOpenSettings?: () => void, user: any }) {
   const isUser = message.role === 'user';
   
   if (isUser) {
     return (
       <div className="flex gap-4 items-start flex-row-reverse group">
         <div 
-          className="bg-center bg-no-repeat bg-cover rounded-full size-8 shrink-0 mt-1" 
-          style={{ backgroundImage: 'url("https://lh3.googleusercontent.com/aida-public/AB6AXuDo-QTc-P6TVQ8rLtd5phnOWKibG6DW4Osz8mTKlkL6KddT5PZK_miBowffaX9IC3HPHQqHKAzDnfqmF4jBg5GQ18Ac6QY9cz6vRRA3MsJKUg_MXsMuNyvOLBLj9scHN7D1fwEeCG7NwSYU261Cp-VgP2Txe1UEpR0s8I-p732hGCLIOa2ABtSRaz5KnPE3sslRYIsLAOnG7Iq4R_HS7c2jq40VDR130D_8nVUJXKEbqyF5IBVZPx9uXrAbb2u9nr_H6AQVJzcbWco")' }}
-        />
+          className="bg-center bg-no-repeat bg-cover rounded-full size-8 shrink-0 mt-1 flex items-center justify-center overflow-hidden bg-slate-700" 
+          style={user?.photoURL ? { backgroundImage: `url('${user.photoURL}')` } : {}}
+        >
+          {!user?.photoURL && <span className="material-symbols-outlined text-slate-400 text-[18px]">person</span>}
+        </div>
         <div className="flex flex-col items-end gap-1 max-w-[85%] md:max-w-[75%]">
-          <div className="text-xs text-text-secondary font-medium mr-1">You</div>
+          <div className="text-xs text-text-secondary font-medium mr-1">{user?.displayName || 'You'}</div>
           <div className="bg-surface-dark text-slate-100 px-5 py-3.5 rounded-2xl rounded-tr-sm">
             <p className="leading-relaxed whitespace-pre-wrap">{message.content}</p>
           </div>
@@ -277,6 +282,9 @@ function MessageBubble({ message, onChangeModel }: { message: Message, onChangeM
       </div>
     );
   }
+
+  const isApiKeyError = message.content.toLowerCase().includes('api key');
+  const isRateLimitError = message.content.toLowerCase().includes('rate limit') || message.content.toLowerCase().includes('quota');
 
   return (
     <div className="flex gap-4 items-start group">
@@ -295,26 +303,41 @@ function MessageBubble({ message, onChangeModel }: { message: Message, onChangeM
             <audio controls src={message.content} className="w-full max-w-sm" />
           ) : message.type === 'error' ? (
             <div className="flex flex-col gap-3">
-              <div className="text-red-400 flex items-center gap-2">
-                <span className="material-symbols-outlined">error</span> {message.content}
+              <div className="text-red-400 flex items-center gap-2 font-medium">
+                <span className="material-symbols-outlined">error</span> 
+                <span>Error Generating Response</span>
               </div>
               <div className="bg-red-500/10 p-4 rounded-xl border border-red-500/20">
-                <p className="text-sm text-red-200 mb-3 font-medium">
-                  This model might be unavailable or requires configuration. Try an alternative:
+                <p className="text-sm text-red-200 mb-4 font-medium">
+                  {message.content}
                 </p>
+                
                 <div className="flex flex-wrap gap-2">
+                  {isApiKeyError && (
+                    <button 
+                      onClick={() => onOpenSettings?.()}
+                      className="px-3 py-1.5 bg-red-500/20 text-red-100 text-xs rounded-lg border border-red-500/30 hover:bg-red-500/30 transition-colors shadow-sm flex items-center gap-1.5"
+                    >
+                      <span className="material-symbols-outlined text-[14px]">settings</span>
+                      Check API Settings
+                    </button>
+                  )}
+                  
                   <button 
                     onClick={() => onChangeModel?.('gemini-3.1-flash-lite-preview')}
                     className="px-3 py-1.5 bg-surface-dark text-white text-xs rounded-lg border border-border-dark hover:bg-surface-darker transition-colors shadow-sm"
                   >
-                    Switch to Gemini Flash Lite
+                    Try Gemini Flash Lite
                   </button>
-                  <button 
-                    onClick={() => onChangeModel?.('gemini-3.1-pro-preview')}
-                    className="px-3 py-1.5 bg-surface-dark text-white text-xs rounded-lg border border-border-dark hover:bg-surface-darker transition-colors shadow-sm"
-                  >
-                    Switch to Gemini Pro
-                  </button>
+                  
+                  {!isRateLimitError && (
+                    <button 
+                      onClick={() => onChangeModel?.('gemini-3.1-pro-preview')}
+                      className="px-3 py-1.5 bg-surface-dark text-white text-xs rounded-lg border border-border-dark hover:bg-surface-darker transition-colors shadow-sm"
+                    >
+                      Try Gemini Pro
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -323,6 +346,7 @@ function MessageBubble({ message, onChangeModel }: { message: Message, onChangeM
               <ReactMarkdown
                 remarkPlugins={[remarkGfm]}
                 components={{
+                  pre: ({ children }) => <>{children}</>,
                   code({ node, inline, className, children, ...props }: any) {
                     const match = /language-(\w+)/.exec(className || '');
                     const codeString = String(children).replace(/\n$/, '');

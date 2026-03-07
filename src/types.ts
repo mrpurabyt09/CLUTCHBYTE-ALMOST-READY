@@ -21,6 +21,7 @@ export interface Chat {
 export interface Settings {
   openRouterApiKey: string;
   groqApiKey: string;
+  geminiApiKey: string;
   defaultModel: string;
   isDarkMode: boolean;
   systemPrompt: string;

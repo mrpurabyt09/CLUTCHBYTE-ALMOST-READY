@@ -16,8 +16,11 @@ interface SidebarProps {
   onOpenAdmin: () => void;
   onOpenModels: () => void;
   onOpenApiKeys: () => void;
+  onOpenHelp: () => void;
   onLogout: () => void;
-  activeView: 'chats' | 'models' | 'settings' | 'api-keys' | 'admin' | 'login' | 'register' | 'reset-password' | 'set-new-password';
+  activeView: 'chats' | 'models' | 'settings' | 'api-keys' | 'admin' | 'login' | 'register' | 'reset-password' | 'set-new-password' | 'help-support';
+  user: any;
+  role: 'user' | 'admin' | null;
 }
 
 export function Sidebar({ 
@@ -33,8 +36,11 @@ export function Sidebar({
   onOpenAdmin,
   onOpenModels,
   onOpenApiKeys,
+  onOpenHelp,
   onLogout,
-  activeView
+  activeView,
+  user,
+  role
 }: SidebarProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
@@ -103,16 +109,18 @@ export function Sidebar({
               <span className="material-symbols-outlined text-[20px]">vpn_key</span>
               <span className="text-sm font-medium">API Keys</span>
             </button>
-            <button 
-              onClick={onOpenAdmin}
-              className={clsx(
-                "flex items-center gap-3 rounded-lg px-3 py-2 transition-colors w-full text-left",
-                activeView === 'admin' ? "bg-[#135bec]/10 text-[#135bec]" : "text-slate-400 hover:bg-white/5 hover:text-white"
-              )}
-            >
-              <span className="material-symbols-outlined text-[20px]">bar_chart</span>
-              <span className="text-sm font-medium">Admin Dashboard</span>
-            </button>
+            {role === 'admin' && (
+              <button 
+                onClick={onOpenAdmin}
+                className={clsx(
+                  "flex items-center gap-3 rounded-lg px-3 py-2 transition-colors w-full text-left",
+                  activeView === 'admin' ? "bg-[#135bec]/10 text-[#135bec]" : "text-slate-400 hover:bg-white/5 hover:text-white"
+                )}
+              >
+                <span className="material-symbols-outlined text-[20px]">bar_chart</span>
+                <span className="text-sm font-medium">Admin Dashboard</span>
+              </button>
+            )}
           </nav>
 
           <div className="mt-6">
@@ -204,7 +212,22 @@ export function Sidebar({
 
         {/* Footer / User Profile */}
         <div className="border-t border-[#232f48] p-4">
-          <button className="flex items-center gap-3 rounded-lg px-3 py-2 text-slate-400 hover:bg-white/5 hover:text-white transition-colors w-full text-left">
+          <div className="flex items-center gap-3 px-3 py-2 mb-2">
+            <div className="h-8 w-8 rounded-full bg-slate-700 flex items-center justify-center overflow-hidden bg-cover bg-center" style={user?.photoURL ? {backgroundImage: `url('${user.photoURL}')`} : {}}>
+              {!user?.photoURL && <span className="material-symbols-outlined text-slate-400 text-[18px]">person</span>}
+            </div>
+            <div className="flex flex-col min-w-0">
+              <span className="text-sm font-medium text-white truncate">{user?.displayName || 'User'}</span>
+              <span className="text-sm text-slate-500 truncate">{user?.email || 'Logged in'}</span>
+            </div>
+          </div>
+          <button 
+            onClick={onOpenHelp}
+            className={clsx(
+              "flex items-center gap-3 rounded-lg px-3 py-2 transition-colors w-full text-left",
+              activeView === 'help-support' ? "bg-[#135bec]/10 text-[#135bec]" : "text-slate-400 hover:bg-white/5 hover:text-white"
+            )}
+          >
             <span className="material-symbols-outlined text-[20px]">help</span>
             <span className="text-sm font-medium">Help & Support</span>
           </button>

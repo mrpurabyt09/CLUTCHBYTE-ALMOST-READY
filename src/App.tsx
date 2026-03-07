@@ -8,23 +8,24 @@ import { LiveAudioModal } from './components/LiveAudioModal';
 import { AdminDashboard } from './components/AdminDashboard';
 import { ModelsDirectory } from './components/ModelsDirectory';
 import { ApiKeys } from './components/ApiKeys';
+import { HelpSupport } from './components/HelpSupport';
 import { Login } from './components/auth/Login';
 import { Registration } from './components/auth/Registration';
 import { ResetPassword } from './components/auth/ResetPassword';
 import { SetNewPassword } from './components/auth/SetNewPassword';
 import { streamOpenRouter, streamGemini, streamGroq, generateImage, generateSpeech } from './services/aiService';
 import { useAuth } from './context/AuthContext';
+import { useModels } from './context/ModelContext';
+import { trackUsage } from './utils/usageTracking';
 
 export default function App() {
-  const { user, loading, logout } = useAuth();
+  const { user, role, loading, logout } = useAuth();
+  const { models } = useModels();
   const [settings, setSettings] = useState<Settings>(() => {
     try {
       const saved = localStorage.getItem('chat_settings');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (!MODELS.find(m => m.id === parsed.defaultModel)) {
-          parsed.defaultModel = DEFAULT_SETTINGS.defaultModel;
-        }
         return parsed;
       }
     } catch (e) {
@@ -37,13 +38,7 @@ export default function App() {
     try {
       const saved = localStorage.getItem('chat_history');
       if (saved) {
-        const parsed = JSON.parse(saved);
-        return parsed.map((c: Chat) => {
-          if (!MODELS.find(m => m.id === c.model)) {
-            return { ...c, model: DEFAULT_SETTINGS.defaultModel };
-          }
-          return c;
-        });
+        return JSON.parse(saved);
       }
     } catch (e) {
       console.error("Error parsing chats", e);
@@ -53,7 +48,7 @@ export default function App() {
 
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [activeView, setActiveView] = useState<'chats' | 'models' | 'settings' | 'api-keys' | 'admin' | 'login' | 'register' | 'reset-password' | 'set-new-password'>(user ? 'chats' : 'login');
+  const [activeView, setActiveView] = useState<'chats' | 'models' | 'settings' | 'api-keys' | 'admin' | 'login' | 'register' | 'reset-password' | 'set-new-password' | 'help-support'>(user ? 'chats' : 'login');
 
   useEffect(() => {
     if (!loading) {
@@ -66,6 +61,12 @@ export default function App() {
   const [lastDeletedChat, setLastDeletedChat] = useState<{ chat: Chat, index: number } | null>(null);
   const [lastDeletedAll, setLastDeletedAll] = useState<Chat[] | null>(null);
   const [showUndoToast, setShowUndoToast] = useState(false);
+
+  useEffect(() => {
+    if (models.length > 0 && !models.find(m => m.id === settings.defaultModel)) {
+      setSettings(prev => ({ ...prev, defaultModel: models[0].id }));
+    }
+  }, [models, settings.defaultModel]);
 
   useEffect(() => {
     localStorage.setItem('chat_settings', JSON.stringify(settings));
@@ -224,14 +225,27 @@ export default function App() {
     }));
 
     try {
-      const chat = chats.find(c => c.id === chatId) || { messages: [], model: modelId || settings.defaultModel };
-      const messagesToSent = [...chat.messages, userMessage];
-      const model = MODELS.find(m => m.id === (modelId || settings.defaultModel));
+      const chat = chats.find(c => c.id === chatId);
+      const messagesToSent = chat ? [...chat.messages, userMessage] : [userMessage];
+      const model = models.find(m => m.id === (modelId || settings.defaultModel)) || models[0];
 
       if (!model) throw new Error("Model not found");
 
+      if (user) {
+        // Estimate tokens: 1 token ~= 4 chars
+        const estimatedTokens = Math.ceil(content.length / 4);
+        trackUsage(user.uid, estimatedTokens, model.id);
+      }
+
+      const effectiveSettings = {
+        ...settings,
+        groqApiKey: (model.provider === 'groq' && (model as any).apiKey) ? (model as any).apiKey : settings.groqApiKey,
+        openRouterApiKey: (model.provider === 'openrouter' && (model as any).apiKey) ? (model as any).apiKey : settings.openRouterApiKey,
+        geminiApiKey: (model.provider === 'gemini' && (model as any).apiKey) ? (model as any).apiKey : settings.geminiApiKey,
+      };
+
       if (model.id === 'gemini-3.1-flash-image-preview') {
-        const imageUrl = await generateImage(content, imageSize || '1K');
+        const imageUrl = await generateImage(content, imageSize || '1K', effectiveSettings);
         setChats(prev => prev.map(c => {
           if (c.id === chatId) {
             return {
@@ -242,7 +256,7 @@ export default function App() {
           return c;
         }));
       } else if (model.id === 'gemini-2.5-flash-preview-tts') {
-        const audioUrl = await generateSpeech(content);
+        const audioUrl = await generateSpeech(content, effectiveSettings);
         setChats(prev => prev.map(c => {
           if (c.id === chatId) {
             return {
@@ -253,8 +267,8 @@ export default function App() {
           return c;
         }));
       } else if (model.provider === 'openrouter') {
-        if (!settings.openRouterApiKey) throw new Error("OpenRouter API Key is missing. Please set it in Settings.");
-        const stream = streamOpenRouter(messagesToSent, settings, model.id);
+        if (!effectiveSettings.openRouterApiKey) throw new Error("OpenRouter API Key is missing. Please set it in Settings.");
+        const stream = streamOpenRouter(messagesToSent, effectiveSettings, model.id);
         for await (const chunk of stream) {
           setChats(prev => prev.map(c => {
             if (c.id === chatId) {
@@ -267,8 +281,8 @@ export default function App() {
           }));
         }
       } else if (model.provider === 'groq') {
-        if (!settings.groqApiKey) throw new Error("Groq API Key is missing. Please set it in Settings.");
-        const stream = streamGroq(messagesToSent, settings, model.id);
+        if (!effectiveSettings.groqApiKey) throw new Error("Groq API Key is missing. Please set it in Settings.");
+        const stream = streamGroq(messagesToSent, effectiveSettings, model.id);
         for await (const chunk of stream) {
           setChats(prev => prev.map(c => {
             if (c.id === chatId) {
@@ -281,7 +295,7 @@ export default function App() {
           }));
         }
       } else {
-        const stream = streamGemini(messagesToSent, settings, model.id);
+        const stream = streamGemini(messagesToSent, effectiveSettings, model.id);
         for await (const chunk of stream) {
           setChats(prev => prev.map(c => {
             if (c.id === chatId) {
@@ -378,8 +392,11 @@ export default function App() {
               onOpenAdmin={() => setActiveView('admin')}
               onOpenModels={() => setActiveView('models')}
               onOpenApiKeys={() => setActiveView('api-keys')}
+              onOpenHelp={() => setActiveView('help-support')}
               onLogout={handleLogout}
               activeView={activeView}
+              user={user}
+              role={role}
             />
           )}
           
@@ -387,10 +404,12 @@ export default function App() {
             {activeView === 'chats' && (
               <ChatArea 
                 chat={currentChat} 
+                user={user}
                 onSendMessage={handleSendMessage}
                 isGenerating={isGenerating}
                 onOpenSidebar={() => setIsSidebarOpen(true)}
                 onOpenLiveAudio={() => setIsLiveAudioOpen(true)}
+                onOpenSettings={() => setActiveView('settings')}
                 onChangeModel={(modelId) => {
                   if (currentChatId) {
                     setChats(chats.map(c => c.id === currentChatId ? { ...c, model: modelId } : c));
@@ -410,10 +429,11 @@ export default function App() {
               />
             )}
 
-            {activeView === 'admin' && (
+            {activeView === 'admin' && role === 'admin' && (
               <AdminDashboard 
                 chats={chats} 
                 settings={settings}
+                user={user}
                 onUpdateSettings={setSettings}
                 onClearAll={() => {
                   handleClearAllChats();
@@ -422,6 +442,21 @@ export default function App() {
                 onClose={() => setActiveView('chats')} 
               />
             )}
+            {activeView === 'admin' && role !== 'admin' && (
+              <div className="flex-1 flex items-center justify-center bg-[#101622]">
+                <div className="text-center">
+                  <span className="material-symbols-outlined text-red-500 text-6xl mb-4">gpp_maybe</span>
+                  <h2 className="text-2xl font-bold text-white mb-2">Access Denied</h2>
+                  <p className="text-slate-400">You do not have permission to view this page.</p>
+                  <button 
+                    onClick={() => setActiveView('chats')}
+                    className="mt-6 px-6 py-2 bg-[#135bec] text-white rounded-lg font-bold hover:bg-[#1d6bf5] transition-all"
+                  >
+                    Return to Chats
+                  </button>
+                </div>
+              </div>
+            )}
 
             {activeView === 'models' && (
               <ModelsDirectory />
@@ -429,6 +464,10 @@ export default function App() {
 
             {activeView === 'api-keys' && (
               <ApiKeys />
+            )}
+
+            {activeView === 'help-support' && (
+              <HelpSupport />
             )}
           </div>
 

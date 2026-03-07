@@ -5,6 +5,8 @@ import { useAuth } from '../context/AuthContext';
 import { updatePassword, updateProfile } from 'firebase/auth';
 import { auth } from '../firebase';
 
+import { useModels } from '../context/ModelContext';
+
 interface AccountSettingsProps {
   settings: Settings;
   onSave: (settings: Settings) => void;
@@ -15,6 +17,7 @@ type SettingsTab = 'profile' | 'security' | 'preferences' | 'billing';
 
 export const AccountSettings: React.FC<AccountSettingsProps> = ({ settings, onSave, onClose }) => {
   const { user } = useAuth();
+  const { models } = useModels();
   const [activeTab, setActiveTab] = useState<SettingsTab>('profile');
   const [localSettings, setLocalSettings] = useState(settings);
   const [newPassword, setNewPassword] = useState('');
@@ -118,19 +121,23 @@ export const AccountSettings: React.FC<AccountSettingsProps> = ({ settings, onSa
                     <div className="flex flex-col gap-6">
                       {/* Avatar Upload */}
                       <div className="flex items-center gap-6">
-                        <div className="relative group cursor-pointer">
-                          <div className="h-24 w-24 overflow-hidden rounded-full ring-4 ring-[#111722] bg-neutral-800">
-                            <img 
-                              alt="User Avatar" 
-                              className="h-full w-full object-cover" 
-                              src="https://lh3.googleusercontent.com/aida-public/AB6AXuB1RYKMv9iy5ikOK96eyLZV_WRFkIHuDyoLK56J27SjiH6bHSR7o1CLL4QX1sZr7qa0HrdAls7c_nBL0TKG3EEeJg_BvEOjuE-95Ot89R9FVEAWY5qKQOH__ctohi2MxpJKGOPoEvy0dg5DOvIurNzXTEcbqwOyFTcL6U7-MqjylP546HyHvwTJe43R5NRqbEm0jFDYuCbbAATZlreYD9mAuN3VcSKfb8kLaSSwEwb4RpNFctZ1dRpx053yKB3I4V9wX_bvxN1_xo4"
-                              referrerPolicy="no-referrer"
-                            />
+                          <div className="relative group cursor-pointer">
+                            <div className="h-24 w-24 overflow-hidden rounded-full ring-4 ring-[#111722] bg-neutral-800 flex items-center justify-center">
+                              {user?.photoURL ? (
+                                <img 
+                                  alt="User Avatar" 
+                                  className="h-full w-full object-cover" 
+                                  src={user.photoURL}
+                                  referrerPolicy="no-referrer"
+                                />
+                              ) : (
+                                <span className="material-symbols-outlined text-slate-500 text-4xl">person</span>
+                              )}
+                            </div>
+                            <div className="absolute bottom-0 right-0 flex h-8 w-8 items-center justify-center rounded-full bg-[#135bec] text-white shadow-md transition-transform hover:scale-110">
+                              <span className="material-symbols-outlined text-[16px]">edit</span>
+                            </div>
                           </div>
-                          <div className="absolute bottom-0 right-0 flex h-8 w-8 items-center justify-center rounded-full bg-[#135bec] text-white shadow-md transition-transform hover:scale-110">
-                            <span className="material-symbols-outlined text-[16px]">edit</span>
-                          </div>
-                        </div>
                         <div className="flex flex-col gap-2">
                           <button className="inline-flex h-9 items-center justify-center rounded-lg bg-[#232f48] px-4 text-sm font-medium text-white hover:bg-slate-700 transition-colors">
                             Change Avatar
@@ -209,10 +216,9 @@ export const AccountSettings: React.FC<AccountSettingsProps> = ({ settings, onSa
                           onChange={(e) => setLocalSettings({ ...localSettings, defaultModel: e.target.value })}
                           className="w-full sm:w-64 rounded-lg border-[#232f48] bg-[#111722] py-2 pl-3 pr-10 text-sm text-white focus:border-[#135bec] focus:ring-[#135bec]"
                         >
-                          <option value="gpt-4-turbo">GPT-4 Turbo (Recommended)</option>
-                          <option value="claude-3-opus">Claude 3 Opus</option>
-                          <option value="llama-3-70b">Llama 3 70B</option>
-                          <option value="gemini-3.1-pro-preview">Gemini 3.1 Pro</option>
+                          {models.map(model => (
+                            <option key={model.id} value={model.id}>{model.name}</option>
+                          ))}
                         </select>
                       </div>
                       <hr className="border-[#232f48]"/>
@@ -237,6 +243,43 @@ export const AccountSettings: React.FC<AccountSettingsProps> = ({ settings, onSa
                             <span className="material-symbols-outlined text-[16px]">light_mode</span>
                             Light
                           </button>
+                        </div>
+                      </div>
+                      <hr className="border-[#232f48]"/>
+                      {/* API Keys */}
+                      <div className="space-y-4">
+                        <p className="text-sm font-medium text-white">API Configurations</p>
+                        <div className="grid gap-4">
+                          <div className="flex flex-col gap-2">
+                            <label className="text-xs font-bold text-slate-500 uppercase">Gemini API Key</label>
+                            <input 
+                              type="password" 
+                              value={localSettings.geminiApiKey || ''}
+                              onChange={(e) => setLocalSettings({ ...localSettings, geminiApiKey: e.target.value })}
+                              placeholder="Enter Gemini API Key..."
+                              className="w-full rounded-lg border-[#232f48] bg-[#111722] py-2.5 px-3 text-sm text-white focus:border-[#135bec] focus:ring-1 focus:ring-[#135bec]"
+                            />
+                          </div>
+                          <div className="flex flex-col gap-2">
+                            <label className="text-xs font-bold text-slate-500 uppercase">Groq API Key</label>
+                            <input 
+                              type="password" 
+                              value={localSettings.groqApiKey || ''}
+                              onChange={(e) => setLocalSettings({ ...localSettings, groqApiKey: e.target.value })}
+                              placeholder="Enter Groq API Key..."
+                              className="w-full rounded-lg border-[#232f48] bg-[#111722] py-2.5 px-3 text-sm text-white focus:border-[#135bec] focus:ring-1 focus:ring-[#135bec]"
+                            />
+                          </div>
+                          <div className="flex flex-col gap-2">
+                            <label className="text-xs font-bold text-slate-500 uppercase">OpenRouter API Key</label>
+                            <input 
+                              type="password" 
+                              value={localSettings.openRouterApiKey || ''}
+                              onChange={(e) => setLocalSettings({ ...localSettings, openRouterApiKey: e.target.value })}
+                              placeholder="Enter OpenRouter API Key..."
+                              className="w-full rounded-lg border-[#232f48] bg-[#111722] py-2.5 px-3 text-sm text-white focus:border-[#135bec] focus:ring-1 focus:ring-[#135bec]"
+                            />
+                          </div>
                         </div>
                       </div>
                       <hr className="border-[#232f48]"/>

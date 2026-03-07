@@ -9,6 +9,8 @@ interface Model {
   status: string;
   latency: string;
   tokenUsage: string;
+  apiKey?: string;
+  endpoint?: string;
 }
 
 interface ModelContextType {
@@ -21,12 +23,28 @@ interface ModelContextType {
 const ModelContext = createContext<ModelContextType | undefined>(undefined);
 
 export const ModelProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [models, setModels] = useState<Model[]>(MODELS);
+  const [models, setModels] = useState<Model[]>(() => {
+    const saved = localStorage.getItem('ai_models');
+    return saved ? JSON.parse(saved) : MODELS;
+  });
 
-  const addModel = (model: Model) => setModels([...models, model]);
-  const updateModel = (id: string, updatedModel: Partial<Model>) => 
-    setModels(models.map(m => m.id === id ? { ...m, ...updatedModel } : m));
-  const deleteModel = (id: string) => setModels(models.filter(m => m.id !== id));
+  const addModel = (model: Model) => {
+    const newModels = [...models, model];
+    setModels(newModels);
+    localStorage.setItem('ai_models', JSON.stringify(newModels));
+  };
+
+  const updateModel = (id: string, updatedModel: Partial<Model>) => {
+    const newModels = models.map(m => m.id === id ? { ...m, ...updatedModel } : m);
+    setModels(newModels);
+    localStorage.setItem('ai_models', JSON.stringify(newModels));
+  };
+
+  const deleteModel = (id: string) => {
+    const newModels = models.filter(m => m.id !== id);
+    setModels(newModels);
+    localStorage.setItem('ai_models', JSON.stringify(newModels));
+  };
 
   return (
     <ModelContext.Provider value={{ models, addModel, updateModel, deleteModel }}>

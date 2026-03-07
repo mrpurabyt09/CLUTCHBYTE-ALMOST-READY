@@ -17,23 +17,28 @@ import { ModelDetails } from './admin/ModelDetails';
 import { UserActivityDetails } from './admin/UserActivityDetails';
 import { FeedbackReports } from './admin/FeedbackReports';
 import { SystemLogs } from './admin/SystemLogs';
+import { SupportTickets } from './admin/SupportTickets';
 import { WebhookConfig } from './admin/WebhookConfig';
+import { UsageAnalytics } from './admin/UsageAnalytics';
+import { ModelsConfig } from './admin/ModelsConfig';
 
 interface AdminDashboardProps {
   chats: Chat[];
   settings: Settings;
+  user: any;
   onClearAll: () => void;
   onClose: () => void;
   onUpdateSettings: (settings: Settings) => void;
 }
 
-export function AdminDashboard({ chats, settings, onClearAll, onClose, onUpdateSettings }: AdminDashboardProps) {
+export function AdminDashboard({ chats, settings, user, onClearAll, onClose, onUpdateSettings }: AdminDashboardProps) {
   const { models, deleteModel } = useModels();
   const [activeSection, setActiveSection] = useState('dashboard');
   const [userSearchTerm, setUserSearchTerm] = useState('');
   const [detailView, setDetailView] = useState<{ type: string; id?: string } | null>(null);
   const [localGroqApiKey, setLocalGroqApiKey] = useState(settings.groqApiKey);
   const [localOpenRouterApiKey, setLocalOpenRouterApiKey] = useState(settings.openRouterApiKey);
+  const [localGeminiApiKey, setLocalGeminiApiKey] = useState(settings.geminiApiKey);
 
   const toggleTheme = () => {
     onUpdateSettings({
@@ -204,6 +209,13 @@ export function AdminDashboard({ chats, settings, onClearAll, onClose, onUpdateS
               <span className="text-sm font-medium">Users</span>
             </button>
             <button 
+              onClick={() => { setActiveSection('support'); setDetailView(null); }}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors w-full text-left ${activeSection === 'support' ? 'bg-[#135bec] text-white' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5'}`}
+            >
+              <span className="material-symbols-outlined text-[20px]">support_agent</span>
+              <span className="text-sm font-medium">Support Tickets</span>
+            </button>
+            <button 
               onClick={() => { setActiveSection('broadcast'); setDetailView(null); }}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors w-full text-left ${activeSection === 'broadcast' ? 'bg-[#135bec] text-white' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5'}`}
             >
@@ -261,10 +273,12 @@ export function AdminDashboard({ chats, settings, onClearAll, onClose, onUpdateS
         {/* User Profile Bottom */}
         <div className="p-4 border-t border-slate-200 dark:border-[#2a3649]">
           <div className="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-white/5 cursor-pointer transition-colors">
-            <div className="h-8 w-8 rounded-full bg-slate-200 dark:bg-slate-700 bg-cover bg-center" style={{backgroundImage: "url('https://lh3.googleusercontent.com/aida-public/AB6AXuDxg5x79vyLMTmMmqrxlCsyfNCKLWo-W6sHxIGdlPcUDybu3cLzjT4BRQGY71fbtpiDjXs_DJUppZrFcUgWPaNJZ1ds0EB9hpdzMU0HaT5jBJurNK3x7selAjZ6Eo55fyRL9jmFK3694ZEnwpk_xRrt0ntl4EU5YvaoVxE0WQ4z77s2vx366t_87E7Wh-S4YblQYlONGogPWt-7Yc9S3wXhA7UvmoyBXS6GWEh9bOcmK4H2ygUGlTkM-C05rObBgKS8a2bXYY0HB5I')"}}></div>
+            <div className="h-8 w-8 rounded-full bg-slate-200 dark:bg-slate-700 bg-cover bg-center flex items-center justify-center overflow-hidden" style={user?.photoURL ? {backgroundImage: `url('${user.photoURL}')`} : {}}>
+              {!user?.photoURL && <span className="material-symbols-outlined text-slate-400 text-[18px]">person</span>}
+            </div>
             <div className="flex flex-col flex-1 min-w-0">
-              <p className="text-sm font-medium text-slate-900 dark:text-white truncate">Alex Morgan</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400 truncate">Super Admin</p>
+              <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{user?.displayName || 'Admin User'}</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{user?.email || 'Administrator'}</p>
             </div>
             <span className="material-symbols-outlined text-slate-500 dark:text-slate-400 text-[18px]">more_vert</span>
           </div>
@@ -291,6 +305,7 @@ export function AdminDashboard({ chats, settings, onClearAll, onClose, onUpdateS
                 {activeSection === 'model-routing' && 'Routing & Fallback'}
                 {activeSection === 'playground' && 'AI Playground'}
                 {activeSection === 'users' && 'Users Management'}
+                {activeSection === 'support' && 'Support Tickets'}
                 {activeSection === 'broadcast' && 'Broadcast Center'}
                 {activeSection === 'data-export' && 'Data Export'}
                 {activeSection === 'settings' && 'System Settings'}
@@ -310,6 +325,7 @@ export function AdminDashboard({ chats, settings, onClearAll, onClose, onUpdateS
                 {activeSection === 'model-routing' && 'Configure smart routing and fallback logic'}
                 {activeSection === 'playground' && 'Test and experiment with different AI models'}
                 {activeSection === 'users' && 'Manage user accounts and permissions'}
+                {activeSection === 'support' && 'Manage and respond to user support requests'}
                 {activeSection === 'broadcast' && 'Send system-wide announcements'}
                 {activeSection === 'feedback' && 'Review and manage user feedback and bug reports'}
                 {activeSection === 'data-export' && 'Export system data for analysis'}
@@ -366,6 +382,7 @@ export function AdminDashboard({ chats, settings, onClearAll, onClose, onUpdateS
                 </div>
               )}
               {activeSection === 'broadcast' && <BroadcastCenter />}
+              {activeSection === 'support' && <SupportTickets />}
               {activeSection === 'feedback' && <FeedbackReports onBack={() => setActiveSection('dashboard')} />}
               {activeSection === 'webhooks' && <WebhookConfig onBack={() => setActiveSection('dashboard')} />}
               {activeSection === 'data-export' && <DataExport />}
@@ -532,362 +549,9 @@ export function AdminDashboard({ chats, settings, onClearAll, onClose, onUpdateS
             </div>
           )}
 
-          {activeSection === 'usage' && (
-            <div className="flex flex-col gap-8">
-              {/* Page Header Info */}
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                  <h1 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Enterprise Usage & Quota Management</h1>
-                  <p className="text-slate-500 dark:text-[#92a4c9] text-sm mt-1">Monitor consumption and manage allocations across your organization.</p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white dark:bg-[#1a2332] border border-slate-200 dark:border-[#324467] text-sm text-slate-600 dark:text-slate-300">
-                    <span className="material-symbols-outlined text-[18px]">calendar_today</span>
-                    <span>Oct 1, 2023 - Oct 31, 2023</span>
-                    <span className="material-symbols-outlined text-[18px]">expand_more</span>
-                  </div>
-                  <button className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#135bec] hover:bg-blue-600 text-white text-sm font-medium transition-colors shadow-lg shadow-blue-900/20">
-                    <span className="material-symbols-outlined text-[18px]">download</span>
-                    Export Report
-                  </button>
-                </div>
-              </div>
+          {activeSection === 'usage' && <UsageAnalytics />}
 
-              {/* Summary Cards Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {/* Token Usage */}
-                <div className="bg-white dark:bg-[#1a2332] rounded-xl border border-slate-200 dark:border-[#324467] p-6 shadow-sm">
-                  <div className="flex justify-between items-start mb-4">
-                    <div>
-                      <p className="text-sm font-medium text-slate-500 dark:text-[#92a4c9]">Total Organization Token Usage</p>
-                      <div className="flex items-baseline gap-2 mt-1">
-                        <h3 className="text-2xl font-bold text-slate-900 dark:text-white">12.5M</h3>
-                        <span className="text-sm text-slate-400">/ 20M</span>
-                      </div>
-                    </div>
-                    <div className="p-2 bg-blue-500/10 rounded-lg">
-                      <span className="material-symbols-outlined text-[#135bec]">token</span>
-                    </div>
-                  </div>
-                  <div className="relative h-2 w-full bg-slate-100 dark:bg-[#232f48] rounded-full overflow-hidden">
-                    <div className="absolute top-0 left-0 h-full bg-[#135bec] rounded-full" style={{ width: '62%' }}></div>
-                  </div>
-                  <div className="flex justify-between mt-2 text-xs">
-                    <span className="text-[#135bec] font-medium">62% Used</span>
-                    <span className="text-slate-400">Reset in 12 days</span>
-                  </div>
-                </div>
-                {/* Active Seats */}
-                <div className="bg-white dark:bg-[#1a2332] rounded-xl border border-slate-200 dark:border-[#324467] p-6 shadow-sm">
-                  <div className="flex justify-between items-start mb-4">
-                    <div>
-                      <p className="text-sm font-medium text-slate-500 dark:text-[#92a4c9]">Active User Seats</p>
-                      <div className="flex items-baseline gap-2 mt-1">
-                        <h3 className="text-2xl font-bold text-slate-900 dark:text-white">45</h3>
-                        <span className="text-sm text-slate-400">/ 50</span>
-                      </div>
-                    </div>
-                    <div className="p-2 bg-teal-500/10 rounded-lg">
-                      <span className="material-symbols-outlined text-teal-400">group_add</span>
-                    </div>
-                  </div>
-                  <div className="relative h-2 w-full bg-slate-100 dark:bg-[#232f48] rounded-full overflow-hidden">
-                    <div className="absolute top-0 left-0 h-full bg-teal-500 rounded-full" style={{ width: '90%' }}></div>
-                  </div>
-                  <div className="flex justify-between mt-2 text-xs">
-                    <span className="text-teal-400 font-medium">90% Occupied</span>
-                    <span className="text-slate-400">5 seats remaining</span>
-                  </div>
-                </div>
-                {/* Cost Forecast */}
-                <div className="bg-white dark:bg-[#1a2332] rounded-xl border border-slate-200 dark:border-[#324467] p-6 shadow-sm flex flex-col justify-between">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <p className="text-sm font-medium text-slate-500 dark:text-[#92a4c9]">Projected Cost (EOM)</p>
-                      <div className="flex items-baseline gap-2 mt-1">
-                        <h3 className="text-2xl font-bold text-slate-900 dark:text-white">$1,240</h3>
-                      </div>
-                    </div>
-                    <div className="p-2 bg-purple-500/10 rounded-lg">
-                      <span className="material-symbols-outlined text-purple-400">trending_up</span>
-                    </div>
-                  </div>
-                  <div className="mt-4 flex items-end gap-1 h-10 w-full">
-                    <div className="w-1/6 bg-[#232f48] h-[30%] rounded-t-sm"></div>
-                    <div className="w-1/6 bg-[#232f48] h-[45%] rounded-t-sm"></div>
-                    <div className="w-1/6 bg-[#232f48] h-[40%] rounded-t-sm"></div>
-                    <div className="w-1/6 bg-[#232f48] h-[60%] rounded-t-sm"></div>
-                    <div className="w-1/6 bg-[#232f48] h-[75%] rounded-t-sm"></div>
-                    <div className="w-1/6 bg-purple-500/80 h-[90%] rounded-t-sm animate-pulse"></div>
-                  </div>
-                  <p className="text-xs text-slate-400 mt-2">Based on current usage trends (+12% vs last month)</p>
-                </div>
-              </div>
-
-              {/* Main Content Area: Table & Detailed Forecast */}
-              <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
-                {/* Team Usage Table */}
-                <div className="xl:col-span-3 bg-white dark:bg-[#1a2332] rounded-xl border border-slate-200 dark:border-[#324467] shadow-sm flex flex-col">
-                  <div className="p-5 border-b border-slate-200 dark:border-[#232f48] flex flex-wrap items-center justify-between gap-4">
-                    <h3 className="font-semibold text-lg text-slate-900 dark:text-white">Team Usage Breakdown</h3>
-                    <div className="flex items-center gap-3">
-                      <div className="relative">
-                        <span className="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]">search</span>
-                        <input className="pl-9 pr-4 py-1.5 rounded-lg bg-slate-50 dark:bg-[#111722] border border-slate-200 dark:border-[#324467] text-sm text-slate-900 dark:text-white focus:ring-1 focus:ring-[#135bec] focus:border-[#135bec] w-48" placeholder="Filter users..." type="text"/>
-                      </div>
-                      <button className="p-1.5 rounded hover:bg-slate-100 dark:hover:bg-[#232f48] text-slate-500 dark:text-[#92a4c9]">
-                        <span className="material-symbols-outlined text-[20px]">filter_list</span>
-                      </button>
-                    </div>
-                  </div>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
-                      <thead>
-                        <tr className="bg-slate-50 dark:bg-[#141b26] border-b border-slate-200 dark:border-[#232f48] text-xs uppercase tracking-wider text-slate-500 dark:text-[#92a4c9]">
-                          <th className="px-6 py-4 font-semibold">User</th>
-                          <th className="px-6 py-4 font-semibold">Role</th>
-                          <th className="px-6 py-4 font-semibold">Monthly Consumption</th>
-                          <th className="px-6 py-4 font-semibold">Allocated Quota</th>
-                          <th className="px-6 py-4 font-semibold text-center">Hard Cap</th>
-                          <th className="px-6 py-4 font-semibold text-right">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-200 dark:divide-[#232f48] text-sm text-slate-600 dark:text-slate-300">
-                        {[
-                          { name: 'Michael Chen', email: 'michael@clutchbyte.com', role: 'Data Science', usage: '1.2M', percentage: 80, quota: '1.5M', cap: true, img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDs3GNAzqWiR-OcrrhbD5xM12_NecBGdIOwQZeQDWfQvxUkSovo1tVAdUhyZlHiJk4clttMihfQjHa72IOxBtzlzzMzRSQw7QYOQzVZnBWbQwTGYA405sX_gqcrXcZVlSGbsFaud8qIfzaipx7L_c_vTTtS3o4YbJorSMoziQKvz2GZbTPQ3_GMpll9b44oyobFYZKgieYerNj0CcOcVFTWc9CBK_IEWzWPgiGnXp1Kt0277rY7RL-DQSl4rM4mCQGTnkZrSg1ogBQ' },
-                          { name: 'Sarah Jenkins', email: 'sarah@clutchbyte.com', role: 'Product', usage: '950k', percentage: 95, quota: '1.0M', cap: true, img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCMqlTxsLHWrQupbC5hhtO6wtotzHdYEHSQOLnU6ggNo-gobKExrX6OUkWlwljXHjT2tjLeHqW0ahboeyAE8FQZghZgxdnDoXt7c6-Y8to4vIYEoAUO-6IpSIntHlt-ScMyM795iIP5vf2LlsaEDUCHYyRV_62ZO5DZWCa_LO_56ni0NOdxLo6CdKzBVwNFtHIXbh4KsbS1DFF5PFN4UvXkclOi6WadMn4bL8Meo1ojFIfnTvnVmWNtldgbrvmOkcBQZ4Je_Am6Uac' },
-                          { name: 'David Ross', email: 'david@clutchbyte.com', role: 'Engineering', usage: '240k', percentage: 12, quota: '2.0M', cap: false, img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAIQnGBmmKDU6fByqI1yzwtOoLtDAlq4-3EUlPOXWBjHQoKbbqdguNkuq-uL5D9GGp7PvyPuD1V4i-uPXBe2U4ToBSpRFvF4S3EM6J5bYqEcdLG-mus2MPsYCe1_cTrh0ppPyC_vx8xaSJIRS5KfUkoeLZUv1OxHk48cvQVVuiD9X7WyQfc6fuFYinpXvYXsg1KQLvK5PikY_1SsSk2bYMGYQB60kzfemV4UDaKJOR-2IJvwJsnmY7o3yw9gfOoakjvhTxInyeJQuc' },
-                          { name: 'Elena Rodriguez', email: 'elena@clutchbyte.com', role: 'Marketing', usage: '50k', percentage: 10, quota: '0.5M', cap: true, img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAPBA6kbpMf3zPImztScqy41Ns_FjIl5AZQgbVRM4jATUBl_Gr6uHAFcIjq89ZumpRDeJS6JcJgOVLh-IEpihqHvgnR6edUC23QxbpgghZ2JvItK4Z-3KXFUewSG_XzcUZiC2pZ-0ZC0laIPTx7t1WSEaTFHRmc_PjXzsoAG7ahO5QMXr-xJCdR90b69G-zPcfY4dG0gMI-AlUQ-AcibqYFlJ1Io2EQImdas5fKYyB6S9Tk_QYF3LeR0gCiByI8CUFAseZ_9A25WwE' }
-                        ].map((user) => (
-                          <tr key={user.email} className="group hover:bg-slate-50 dark:hover:bg-[#232f48]/50 transition-colors">
-                            <td className="px-6 py-4">
-                              <div className="flex items-center gap-3">
-                                <div className="size-9 rounded-full bg-cover bg-center" style={{ backgroundImage: `url('${user.img}')` }}></div>
-                                <div>
-                                  <p className="font-medium text-slate-900 dark:text-white">{user.name}</p>
-                                  <p className="text-xs text-slate-500">{user.email}</p>
-                                </div>
-                              </div>
-                            </td>
-                            <td className="px-6 py-4">{user.role}</td>
-                            <td className="px-6 py-4">
-                              <div className="flex flex-col gap-1 w-32">
-                                <div className="flex justify-between text-xs mb-0.5">
-                                  <span className={`font-medium ${user.percentage > 90 ? 'text-orange-400' : 'text-slate-900 dark:text-white'}`}>{user.usage}</span>
-                                  <span className={user.percentage > 90 ? 'text-orange-400' : 'text-slate-500'}>{user.percentage}%</span>
-                                </div>
-                                <div className="h-1.5 w-full bg-slate-200 dark:bg-[#111722] rounded-full">
-                                  <div className={`h-full rounded-full ${user.percentage > 90 ? 'bg-orange-400' : 'bg-[#135bec]'}`} style={{ width: `${user.percentage}%` }}></div>
-                                </div>
-                              </div>
-                            </td>
-                            <td className="px-6 py-4">
-                              <div className="flex items-center gap-2">
-                                <input className="w-20 px-2 py-1 bg-transparent border border-slate-300 dark:border-[#324467] rounded text-right text-slate-900 dark:text-white focus:border-[#135bec] focus:ring-1 focus:ring-[#135bec] text-sm" type="text" defaultValue={user.quota}/>
-                                <span className="text-xs text-slate-500">Tokens</span>
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 text-center">
-                              <label className="inline-flex relative items-center cursor-pointer">
-                                <input type="checkbox" defaultChecked={user.cap} className="sr-only peer" />
-                                <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-[#111722] peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-[#135bec]"></div>
-                              </label>
-                            </td>
-                            <td className="px-6 py-4 text-right">
-                              <button className="text-slate-400 hover:text-[#135bec] transition-colors">
-                                <span className="material-symbols-outlined text-[20px]">edit</span>
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                  <div className="p-4 border-t border-slate-200 dark:border-[#232f48] flex justify-between items-center">
-                    <p className="text-sm text-slate-500 dark:text-[#92a4c9]">Showing 4 of 45 members</p>
-                    <div className="flex gap-2">
-                      <button className="px-3 py-1 rounded bg-slate-100 dark:bg-[#111722] border border-slate-200 dark:border-[#324467] text-sm text-slate-500 disabled:opacity-50" disabled>Previous</button>
-                      <button className="px-3 py-1 rounded bg-slate-100 dark:bg-[#111722] border border-slate-200 dark:border-[#324467] text-sm text-slate-900 dark:text-white hover:bg-slate-200 dark:hover:bg-[#232f48] transition-colors">Next</button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Cost Forecast Side Panel */}
-                <div className="xl:col-span-1 flex flex-col gap-6">
-                  {/* Cost Trend */}
-                  <div className="bg-white dark:bg-[#1a2332] rounded-xl border border-slate-200 dark:border-[#324467] p-6 shadow-sm">
-                    <h3 className="font-semibold text-lg text-slate-900 dark:text-white mb-4">Cost Analytics</h3>
-                    <div className="mb-6">
-                      <p className="text-xs font-medium text-slate-500 dark:text-[#92a4c9] uppercase tracking-wider mb-2">Current Run Rate</p>
-                      <div className="flex items-center justify-between">
-                        <p className="text-3xl font-bold text-slate-900 dark:text-white">$450<span className="text-lg text-slate-400 font-normal">/mo</span></p>
-                        <span className="flex items-center text-xs font-medium text-emerald-400 bg-emerald-400/10 px-2 py-1 rounded">
-                          <span className="material-symbols-outlined text-[14px] mr-1">trending_down</span>
-                          -2.5%
-                        </span>
-                      </div>
-                    </div>
-                    <div className="space-y-4">
-                      <div>
-                        <div className="flex justify-between text-sm mb-1">
-                          <span className="text-slate-500 dark:text-[#92a4c9]">GPT-4 Usage</span>
-                          <span className="text-slate-900 dark:text-white font-medium">$320.50</span>
-                        </div>
-                        <div className="h-1.5 w-full bg-slate-100 dark:bg-[#232f48] rounded-full overflow-hidden">
-                          <div className="h-full bg-purple-500 rounded-full" style={{ width: '70%' }}></div>
-                        </div>
-                      </div>
-                      <div>
-                        <div className="flex justify-between text-sm mb-1">
-                          <span className="text-slate-500 dark:text-[#92a4c9]">Claude 3 Usage</span>
-                          <span className="text-slate-900 dark:text-white font-medium">$85.20</span>
-                        </div>
-                        <div className="h-1.5 w-full bg-slate-100 dark:bg-[#232f48] rounded-full overflow-hidden">
-                          <div className="h-full bg-indigo-500 rounded-full" style={{ width: '25%' }}></div>
-                        </div>
-                      </div>
-                      <div>
-                        <div className="flex justify-between text-sm mb-1">
-                          <span className="text-slate-500 dark:text-[#92a4c9]">Other Models</span>
-                          <span className="text-slate-900 dark:text-white font-medium">$44.30</span>
-                        </div>
-                        <div className="h-1.5 w-full bg-slate-100 dark:bg-[#232f48] rounded-full overflow-hidden">
-                          <div className="h-full bg-slate-500 rounded-full" style={{ width: '5%' }}></div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Settings */}
-                  <div className="bg-white dark:bg-[#1a2332] rounded-xl border border-slate-200 dark:border-[#324467] p-6 shadow-sm">
-                    <h3 className="font-semibold text-lg text-slate-900 dark:text-white mb-4">Alert Configuration</h3>
-                    <div className="space-y-4">
-                      <div>
-                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Usage Threshold Alert</label>
-                        <div className="flex items-center gap-2">
-                          <input className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer dark:bg-[#232f48]" max="100" min="0" type="range" defaultValue="80"/>
-                          <span className="text-sm font-bold text-[#135bec] w-12 text-right">80%</span>
-                        </div>
-                        <p className="text-xs text-slate-500 mt-1">Notify admins when organization quota hits this limit.</p>
-                      </div>
-                      <div className="pt-4 border-t border-slate-200 dark:border-[#232f48]">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Auto-Pause Overages</span>
-                          <label className="inline-flex relative items-center cursor-pointer">
-                            <input type="checkbox" className="sr-only peer" />
-                            <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-[#111722] peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-[#135bec]"></div>
-                          </label>
-                        </div>
-                        <p className="text-xs text-slate-500">Automatically disable API access when quota is exceeded.</p>
-                      </div>
-                    </div>
-                    <button className="w-full mt-6 bg-[#232f48] hover:bg-[#324467] text-white py-2 rounded-lg text-sm font-medium transition-colors">Update Settings</button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {activeSection === 'models' && (
-            <div className="flex flex-col gap-6">
-              {/* Models KPI Row */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="bg-white dark:bg-[#1a2332] rounded-xl p-5 border border-slate-200 dark:border-[#2a3649] shadow-sm">
-                  <h3 className="text-slate-500 dark:text-slate-400 text-sm font-medium">Total Models</h3>
-                  <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">12</p>
-                </div>
-                <div className="bg-white dark:bg-[#1a2332] rounded-xl p-5 border border-slate-200 dark:border-[#2a3649] shadow-sm">
-                  <h3 className="text-slate-500 dark:text-slate-400 text-sm font-medium">Active Providers</h3>
-                  <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">4</p>
-                </div>
-                <div className="bg-white dark:bg-[#1a2332] rounded-xl p-5 border border-slate-200 dark:border-[#2a3649] shadow-sm">
-                  <h3 className="text-slate-500 dark:text-slate-400 text-sm font-medium">Average Latency</h3>
-                  <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">245ms</p>
-                </div>
-              </div>
-
-              {/* Models Table */}
-              <div className="bg-white dark:bg-[#1a2332] rounded-xl border border-slate-200 dark:border-[#2a3649] shadow-sm overflow-hidden">
-                <div className="p-6 border-b border-slate-200 dark:border-[#2a3649] flex justify-between items-center">
-                  <h3 className="text-lg font-bold text-slate-900 dark:text-white">Active Models</h3>
-                  <div className="flex items-center gap-3">
-                    <div className="relative">
-                      <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-[18px]">search</span>
-                      <input 
-                        type="text" 
-                        placeholder="Search models..." 
-                        className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-sm rounded-lg border-none focus:ring-1 focus:ring-[#135bec] py-2 pl-10 pr-3 w-64"
-                      />
-                    </div>
-                  <button 
-                    onClick={() => setDetailView({ type: 'add-model' })}
-                    className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-white bg-[#135bec] hover:bg-[#135bec]/90 rounded-lg transition-colors whitespace-nowrap"
-                  >
-                    <span className="material-symbols-outlined text-[18px]">add</span>
-                    <span>New Model</span>
-                  </button>
-                  </div>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse">
-                    <thead>
-                      <tr className="bg-slate-50 dark:bg-slate-800/50">
-                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Model Name</th>
-                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Provider</th>
-                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Status</th>
-                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Usage</th>
-                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-200 dark:divide-[#2a3649]">
-                      {models.map((model) => (
-                        <tr key={model.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
-                          <td className="px-6 py-4">
-                            <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-500">
-                                <span className="material-symbols-outlined text-[18px]">smart_toy</span>
-                              </div>
-                              <span className="text-sm font-semibold text-slate-900 dark:text-white">{model.name}</span>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 text-sm text-slate-500 dark:text-slate-400">{model.provider}</td>
-                          <td className="px-6 py-4">
-                            <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-medium ${model.status === 'Operational' ? 'bg-[#0bda5e]/10 text-[#0bda5e]' : 'bg-orange-500/10 text-orange-500'}`}>
-                              <span className={`h-1 w-1 rounded-full ${model.status === 'Operational' ? 'bg-[#0bda5e]' : 'bg-orange-500'}`}></span>
-                              {model.status}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 text-sm text-slate-500 dark:text-slate-400">{model.tokenUsage}</td>
-                          <td className="px-6 py-4">
-                            <div className="flex items-center gap-2">
-                              <button 
-                                onClick={() => setDetailView({ type: 'model-details', id: model.id })}
-                                className="p-1.5 text-slate-400 hover:text-[#135bec] hover:bg-[#135bec]/10 rounded transition-colors"
-                              >
-                                <span className="material-symbols-outlined text-[18px]">visibility</span>
-                              </button>
-                              <button 
-                                onClick={() => setDetailView({ type: 'edit-model', id: model.id })}
-                                className="p-1.5 text-slate-400 hover:text-[#135bec] hover:bg-[#135bec]/10 rounded transition-colors"
-                              >
-                                <span className="material-symbols-outlined text-[18px]">settings</span>
-                              </button>
-                              <button 
-                                onClick={() => deleteModel(model.id)}
-                                className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-500/10 rounded transition-colors"
-                              >
-                                <span className="material-symbols-outlined text-[18px]">delete</span>
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          )}
+          {activeSection === 'models' && <ModelsConfig />}
 
           {activeSection === 'users' && <UserManagement />}
 
@@ -902,6 +566,16 @@ export function AdminDashboard({ chats, settings, onClearAll, onClose, onUpdateS
                   <h3 className="text-lg font-bold text-slate-900 dark:text-white">API Configuration</h3>
                 </div>
                 <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-500 dark:text-slate-400 mb-1.5">Gemini API Key</label>
+                    <input 
+                      type="password" 
+                      value={localGeminiApiKey} 
+                      onChange={(e) => setLocalGeminiApiKey(e.target.value)}
+                      className="w-full bg-slate-100 dark:bg-slate-800 border-none rounded-lg px-4 py-2 text-sm focus:ring-1 focus:ring-[#135bec]" 
+                      placeholder="Optional: Falls back to system key"
+                    />
+                  </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-500 dark:text-slate-400 mb-1.5">OpenRouter API Key</label>
                     <input 
@@ -921,7 +595,7 @@ export function AdminDashboard({ chats, settings, onClearAll, onClose, onUpdateS
                     />
                   </div>
                   <button 
-                    onClick={() => onUpdateSettings({...settings, groqApiKey: localGroqApiKey, openRouterApiKey: localOpenRouterApiKey})} 
+                    onClick={() => onUpdateSettings({...settings, groqApiKey: localGroqApiKey, openRouterApiKey: localOpenRouterApiKey, geminiApiKey: localGeminiApiKey})} 
                     className="w-full py-2 bg-[#135bec] text-white rounded-lg text-sm font-bold hover:bg-[#135bec]/90 transition-colors"
                   >
                     Save API Settings

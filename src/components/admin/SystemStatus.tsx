@@ -1,21 +1,54 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
+import { collection, onSnapshot, doc, updateDoc, setDoc } from 'firebase/firestore';
+import { db } from '../../firebase';
 
 interface SystemStatusProps {
   onNavigate?: (section: string) => void;
 }
 
+interface ServiceStatus {
+  id: string;
+  name: string;
+  status: 'operational' | 'degraded' | 'down';
+  latency: number;
+  uptime: string;
+  icon: string;
+}
+
 export function SystemStatus({ onNavigate }: SystemStatusProps) {
-  const [services, setServices] = useState([
-    { name: 'Core API Gateway', icon: 'api', uptime: '99.4%', status: 'degraded', latency: 42 },
-    { name: 'Inference Engine', icon: 'psychology', uptime: '99.9%', status: 'operational', latency: 124 },
-    { name: 'Vector Database', icon: 'database', uptime: '100%', status: 'operational', latency: 8 },
-    { name: 'Auth Service', icon: 'lock', uptime: '100%', status: 'operational', latency: 15 },
-    { name: 'Web Dashboard', icon: 'dashboard', uptime: '100%', status: 'operational', latency: 24 },
-    { name: 'CDN Edge', icon: 'language', uptime: '99.9%', status: 'operational', latency: 12 },
-    { name: 'Storage Cluster', icon: 'folder_shared', uptime: '100%', status: 'operational', latency: 31 },
-    { name: 'Monitoring Stack', icon: 'monitoring', uptime: '100%', status: 'operational', latency: 5 },
-  ]);
+  const [services, setServices] = useState<ServiceStatus[]>([]);
+  const [isEditing, setIsEditing] = useState(false);
+
+  useEffect(() => {
+    const unsubscribe = onSnapshot(collection(db, 'system_status'), (snapshot) => {
+      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ServiceStatus));
+      
+      if (data.length === 0) {
+        // Initialize default services if empty
+        const defaults = [
+          { id: 'api-gateway', name: 'Core API Gateway', icon: 'api', uptime: '99.4%', status: 'operational', latency: 42 },
+          { id: 'inference-engine', name: 'Inference Engine', icon: 'psychology', uptime: '99.9%', status: 'operational', latency: 124 },
+          { id: 'vector-db', name: 'Vector Database', icon: 'database', uptime: '100%', status: 'operational', latency: 8 },
+          { id: 'auth-service', name: 'Auth Service', icon: 'lock', uptime: '100%', status: 'operational', latency: 15 },
+          { id: 'web-dashboard', name: 'Web Dashboard', icon: 'dashboard', uptime: '100%', status: 'operational', latency: 24 },
+          { id: 'cdn-edge', name: 'CDN Edge', icon: 'language', uptime: '99.9%', status: 'operational', latency: 12 },
+          { id: 'storage-cluster', name: 'Storage Cluster', icon: 'folder_shared', uptime: '100%', status: 'operational', latency: 31 },
+          { id: 'monitoring-stack', name: 'Monitoring Stack', icon: 'monitoring', uptime: '100%', status: 'operational', latency: 5 },
+        ];
+        defaults.forEach(s => setDoc(doc(db, 'system_status', s.id), s));
+      } else {
+        setServices(data);
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const toggleStatus = async (service: ServiceStatus) => {
+    if (!isEditing) return;
+    const newStatus = service.status === 'operational' ? 'degraded' : (service.status === 'degraded' ? 'down' : 'operational');
+    await updateDoc(doc(db, 'system_status', service.id), { status: newStatus });
+  };
 
   const [regionalMetrics, setRegionalMetrics] = useState([
     { region: 'US-East (N. Virginia)', provider: 'AWS', status: 'Degraded', latency: 142, color: 'yellow' },
@@ -23,20 +56,6 @@ export function SystemStatus({ onNavigate }: SystemStatusProps) {
     { region: 'EU-Central (Frankfurt)', provider: 'Azure', status: 'Operational', latency: 34, color: 'emerald' },
     { region: 'Asia-East (Taiwan)', provider: 'GCP', status: 'Operational', latency: 41, color: 'emerald' },
   ]);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setServices(prev => prev.map(s => ({
-        ...s,
-        latency: Math.max(5, s.latency + Math.floor(Math.random() * 21 - 10))
-      })));
-      setRegionalMetrics(prev => prev.map(r => ({
-        ...r,
-        latency: Math.max(5, r.latency + Math.floor(Math.random() * 21 - 10))
-      })));
-    }, 2000);
-    return () => clearInterval(interval);
-  }, []);
 
   return (
     <motion.div 
@@ -57,16 +76,24 @@ export function SystemStatus({ onNavigate }: SystemStatusProps) {
               Real-time monitoring of our global infrastructure, API gateways, and inference clusters.
             </p>
           </div>
-          <div className="flex items-center gap-4 bg-white dark:bg-[#1a2332] p-4 rounded-2xl border border-slate-200 dark:border-[#324467] shadow-sm">
-            <div className="flex flex-col items-end">
-              <div className="flex items-center gap-2">
-                <span className="relative flex h-2.5 w-2.5">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-                </span>
-                <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400">All Systems Operational</span>
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => setIsEditing(!isEditing)}
+              className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors ${isEditing ? 'bg-amber-500 text-white' : 'bg-slate-100 dark:bg-[#1a2332] text-slate-500'}`}
+            >
+              {isEditing ? 'Editing Mode On' : 'Edit Status'}
+            </button>
+            <div className="flex items-center gap-4 bg-white dark:bg-[#1a2332] p-4 rounded-2xl border border-slate-200 dark:border-[#324467] shadow-sm">
+              <div className="flex flex-col items-end">
+                <div className="flex items-center gap-2">
+                  <span className="relative flex h-2.5 w-2.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                  </span>
+                  <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400">All Systems Operational</span>
+                </div>
+                <span className="text-[10px] text-slate-400 font-medium uppercase tracking-wider mt-1">Last Sync: Just Now</span>
               </div>
-              <span className="text-[10px] text-slate-400 font-medium uppercase tracking-wider mt-1">Last Sync: Just Now</span>
             </div>
           </div>
         </div>
@@ -139,12 +166,16 @@ export function SystemStatus({ onNavigate }: SystemStatusProps) {
           {/* Service Grid - Full Width */}
           <div className="md:col-span-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mt-4">
             {services.map((service) => (
-              <div key={service.name} className="bg-white dark:bg-[#1a2332] p-6 rounded-3xl border border-slate-200 dark:border-[#324467] hover:shadow-md transition-all group">
+              <div 
+                key={service.id} 
+                onClick={() => toggleStatus(service)}
+                className={`bg-white dark:bg-[#1a2332] p-6 rounded-3xl border border-slate-200 dark:border-[#324467] hover:shadow-md transition-all group ${isEditing ? 'cursor-pointer hover:border-amber-500' : ''}`}
+              >
                 <div className="flex items-center justify-between mb-6">
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${service.status === 'operational' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-yellow-500/10 text-yellow-500'}`}>
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${service.status === 'operational' ? 'bg-emerald-500/10 text-emerald-500' : service.status === 'degraded' ? 'bg-yellow-500/10 text-yellow-500' : 'bg-red-500/10 text-red-500'}`}>
                     <span className="material-symbols-outlined text-[20px]">{service.icon}</span>
                   </div>
-                  <div className={`h-2 w-2 rounded-full ${service.status === 'operational' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-yellow-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]'}`}></div>
+                  <div className={`h-2 w-2 rounded-full ${service.status === 'operational' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : service.status === 'degraded' ? 'bg-yellow-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]' : 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]'}`}></div>
                 </div>
                 <h4 className="font-bold text-slate-900 dark:text-white mb-1">{service.name}</h4>
                 <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-50 dark:border-[#232f48]">
@@ -153,8 +184,8 @@ export function SystemStatus({ onNavigate }: SystemStatusProps) {
                     <span className="text-sm font-mono font-bold text-slate-700 dark:text-slate-300">{service.uptime}</span>
                   </div>
                   <div className="flex flex-col items-end">
-                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Latency</span>
-                    <span className="text-sm font-mono font-bold text-slate-700 dark:text-slate-300">{service.latency}ms</span>
+                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Status</span>
+                    <span className={`text-sm font-mono font-bold uppercase ${service.status === 'operational' ? 'text-emerald-500' : service.status === 'degraded' ? 'text-yellow-500' : 'text-red-500'}`}>{service.status}</span>
                   </div>
                 </div>
               </div>

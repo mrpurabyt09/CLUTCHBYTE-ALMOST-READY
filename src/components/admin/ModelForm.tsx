@@ -21,8 +21,10 @@ export function ModelForm({ mode, initialData, onBack }: ModelFormProps) {
       provider: (document.getElementById('provider') as HTMLSelectElement).value,
       description: (document.getElementById('description') as HTMLTextAreaElement).value,
       latency: (document.getElementById('latency') as HTMLInputElement).value,
+      apiKey: (document.getElementById('apiKey') as HTMLInputElement).value,
+      endpoint: (document.getElementById('endpoint') as HTMLInputElement).value,
       status: 'Operational',
-      tokenUsage: '128k',
+      tokenUsage: (document.getElementById('contextWindowSelect') as HTMLSelectElement).value || '128k',
     };
 
     if (mode === 'add') {

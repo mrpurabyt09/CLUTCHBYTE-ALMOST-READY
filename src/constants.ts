@@ -105,6 +105,7 @@ export const MODELS = [
 export const DEFAULT_SETTINGS: Settings = {
   openRouterApiKey: '',
   groqApiKey: '',
+  geminiApiKey: '',
   defaultModel: 'gemini-3.1-flash-lite-preview',
   isDarkMode: false,
   systemPrompt: '',
